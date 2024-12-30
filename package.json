@@ -1,0 +1,39 @@
+{
+  "name": "r2cn-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A Probot app",
+  "author": "benjamin.747",
+  "license": "ISC",
+  "homepage": "https://github.com//",
+  "keywords": [
+    "probot",
+    "github",
+    "probot-app"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "probot run ./lib/index.js",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "js-yaml": "4.1.0",
+    "node-fetch": "^3.3.2",
+    "pino": "^9.6.0",
+    "probot": "^13.4.1",
+    "simple-git": "^3.27.0",
+    "stream": "^0.0.3"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.10.0",
+    "nock": "^14.0.0-beta.5",
+    "smee-client": "^2.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.6"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "type": "module"
+}
