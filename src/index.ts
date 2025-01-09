@@ -1,67 +1,68 @@
 import { Context, Probot } from "probot";
 import yaml from "js-yaml";
-
-interface Config {
-  traceRepos: string[];
-  taskMaintainers: string[];
-  noneProjectComment: string,
-  noneAdminComment: string,
-}
+import * as Task from "./task.js";
+import { Config } from "./common.js";
 
 export default (app: Probot) => {
-  app.on("issues.opened", async (context) => {
-    const issueComment = context.issue({
-      body: "Thanks for opening this issue!",
-    });
-
-    context.log.info("This issue is about context");
-    app.log.info("This issue is about app");
-    await context.octokit.issues.createComment(issueComment);
-  });
+  app.log.info(`api endpoint: ${process.env.API_ENDPOINT}`);
 
   app.on(["issue_comment.created", "issue_comment.edited"], async (context) => {
     const comment = context.payload.comment;
-    const config = await loadConfig(context);
+    const config = await fetchConfig(context);
     if (comment.user.type === "Bot") {
       context.log.debug("This comment was posted by a bot!");
       return
     }
     const labels = context.payload.issue.labels;
-    const hasLabel = labels.some((label) => label.name === "r2cn");
+    const hasLabel = labels.some((label) => label.name.startsWith("r2cn"));
     const creator = context.payload.issue.user.login;
-    const full_name = context.payload.repository.full_name;
+    const repo_full_name = context.payload.repository.full_name;
 
     if (hasLabel && config !== null) {
-      if (!config.taskMaintainers.includes(creator)) {
-        context.log.debug("none admin")
+      const repo = config.repos.find((repo) => repo.name === repo_full_name);
+      if (!repo) {
         await context.octokit.issues.createComment(context.issue({
-          body: config.noneAdminComment,
+          body: config.project.noneProjectComment,
         }));
         return
       }
-      if (!config.traceRepos.includes(full_name)) {
-        context.log.debug("none project")
+
+      if (!repo.maintainers.includes(creator)) {
         await context.octokit.issues.createComment(context.issue({
-          body: config.noneProjectComment,
+          body: config.project.noneMaintainerComment,
         }));
         return
       }
-      // call api check task status and points.
-      await context.octokit.issues.createComment(context.issue({
-        body: "Task created successfully.",
-      }));
+      const task = await Task.getTask(context.payload.issue.id);
+      if (task == null) {
+        let checkRes: Task.CheckTaskResults = await Task.checkTask(context.payload.repository, context.payload.issue, config);
+        if (checkRes.result) {
+          let newTaskRes = await Task.newTask(context.payload.repository, context.payload.issue, checkRes.score);
+          if (newTaskRes) {
+            await context.octokit.issues.createComment(context.issue({
+              body: "Task created successfully."
+            }));
+          }
+        } else {
+          await context.octokit.issues.createComment(context.issue({
+            body: checkRes.message
+          }));
+        }
+      } else {
+        context.log.debug("Task exist, skipping...")
+      }
     } else {
-      context.log.info("didn't have r2cn label")
+      context.log.error("R2cn label not found or config parsing error")
     }
   });
 };
 
 
-async function loadConfig(context: Context) {
+async function fetchConfig(context: Context) {
   const response = await context.octokit.repos.getContent({
     owner: "r2cn-dev",
     repo: "organization",
-    path: ".github/config.yaml",
+    path: "organization.yaml",
   });
 
   if ("type" in response.data && response.data.type === "file") {
