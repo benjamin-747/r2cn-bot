@@ -1,22 +1,22 @@
 import { Issue, Repository } from "@octokit/webhooks-types";
 import { Config, fetchData, postData } from "./common.js";
 
-interface Task {
+export interface Task {
     github_repo_id: number,
     github_issue_id: number,
     points?: number,
     task_status: TaskStatus,
-    student_github_id?: number,
-    mentor_github_id: number,
+    student_github_login?: string,
+    mentor_github_login: string,
 }
 
-enum TaskStatus {
-    Open,
-    Invalid,
-    RequestAssign,
-    Assigned,
-    RequestFinish,
-    Finished,
+export enum TaskStatus {
+    Open = "Open",
+    Invalid = "Invalid",
+    RequestAssign = "RequestAssign",
+    Assigned = "Assigned",
+    RequestFinish = "RequestFinish",
+    Finished = "Finished",
 }
 
 export async function getTask(issue_id: number) {
@@ -31,15 +31,15 @@ interface newTask {
     github_repo_id: number,
     github_issue_id: number,
     score: number,
-    mentor_github_id: number,
+    mentor_github_login: string,
 }
 
 export async function newTask(repo: Repository, issue: Issue, score: number) {
-    let req = {
+    const req = {
         github_repo_id: repo.id,
         github_issue_id: issue.id,
         score: score,
-        mentor_github_id: issue.user.id,
+        mentor_github_login: issue.user.login,
     }
     const apiUrl = `${process.env.API_ENDPOINT}/task/new`;
     const res = await postData<Task[], SearchTaskReq>(apiUrl, req).then((res) => {
@@ -85,7 +85,7 @@ export async function checkTask(repo: Repository, issue: Issue, config: Config) 
     }
 
     const apiUrl = `${process.env.API_ENDPOINT}/task/search`;
-    let req = {
+    const req = {
         github_repo_id: repo.id
     }
     const tasks: Task[] = await postData<Task[], SearchTaskReq>(apiUrl, req).then((res) => {
