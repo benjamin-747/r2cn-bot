@@ -2,11 +2,19 @@ import axios, { AxiosResponse } from "axios";
 
 export interface Config {
     repos: Repo[];
-    project: projectComment,
+    project: ProjectComment,
     task: TaskComment,
+    command: CommandComment,
+    requestAssign: RequestAssign,
+    internDisapprove: InternDisapprove,
+    internApprove: InternApprove
+    requestComplete: RequestComplete,
+    requestRelease: RequestRelease,
+    internFail: InternFail,
+    internDone: InternDone,
 }
 
-interface projectComment {
+interface ProjectComment {
     noneProjectComment: string,
     noneMaintainerComment: string,
 }
@@ -18,9 +26,50 @@ interface TaskComment {
     toomanyTask: string,
 }
 
+interface CommandComment {
+    noPermission: string,
+    invalidTaskState: string,
+}
+
+interface RequestAssign {
+    success: string,
+    waitingInfoReview: string,
+    existTask: string,
+    alreadyClaim: string,
+}
+
+interface InternDisapprove {
+    success: string
+}
+
+interface InternApprove {
+    success: string
+}
+
+interface RequestComplete {
+    success: string
+    noRelatedPR: string,
+}
+
+interface RequestRelease {
+    success: string
+}
+
+interface InternFail {
+    success: string
+}
+
+interface InternDone {
+    success: string
+}
 interface Repo {
     name: string,
     maintainers: string[]
+}
+
+export interface CommandRequest {
+    github_issue_id: number,
+    login?: string
 }
 
 
