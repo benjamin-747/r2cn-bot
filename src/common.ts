@@ -69,7 +69,8 @@ interface Repo {
 
 export interface CommandRequest {
     github_issue_id: number,
-    login?: string
+    login: string
+    github_id: number
 }
 
 

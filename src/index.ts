@@ -21,55 +21,59 @@ export default (app: Probot) => {
         const creator = context.payload.issue.user.login;
         const repo_full_name = context.payload.repository.full_name;
 
-        if (hasLabel && config !== null) {
-            const repo = config.repos.find((repo) => repo.name === repo_full_name);
-            if (!repo) {
-                await context.octokit.issues.createComment(context.issue({
-                    body: config.project.noneProjectComment,
-                }));
-                return
-            }
+        if (hasLabel) {
+            context.log.debug("R2cn label not found, skipping message")
+            return
+        }
+        if (config == null) {
+            context.log.error("Config parsing error");
+            return
+        }
+        const repo = config.repos.find((repo) => repo.name === repo_full_name);
+        if (!repo) {
+            await context.octokit.issues.createComment(context.issue({
+                body: config.project.noneProjectComment,
+            }));
+            return
+        }
 
-            if (!repo.maintainers.includes(creator)) {
-                await context.octokit.issues.createComment(context.issue({
-                    body: config.project.noneMaintainerComment,
-                }));
-                return
-            }
-            const task = await Task.getTask(context.payload.issue.id);
-            if (task == null) {
-                const checkRes: Task.CheckTaskResults = await Task.checkTask(context.payload.repository, context.payload.issue, config);
-                if (checkRes.result) {
-                    const newTaskRes = await Task.newTask(context.payload.repository, context.payload.issue, checkRes.score);
-                    if (newTaskRes) {
-                        await context.octokit.issues.createComment(context.issue({
-                            body: "Task created successfully."
-                        }));
-                    }
-                } else {
+        if (!repo.maintainers.includes(creator)) {
+            await context.octokit.issues.createComment(context.issue({
+                body: config.project.noneMaintainerComment,
+            }));
+            return
+        }
+        const task = await Task.getTask(context.payload.issue.id);
+        if (task == null) {
+            const checkRes: Task.CheckTaskResults = await Task.checkTask(context.payload.repository, context.payload.issue, config);
+            if (checkRes.result) {
+                const newTaskRes = await Task.newTask(context.payload.repository, context.payload.issue, checkRes.score);
+                if (newTaskRes) {
                     await context.octokit.issues.createComment(context.issue({
-                        body: checkRes.message
+                        body: "Task created successfully."
                     }));
                 }
             } else {
-                const comment = context.payload.comment.body.trim();
-
-                if (comment.startsWith("/request")) {
-                    let res = await Student.handle_stu_cmd(context.payload.comment.user, comment, config, task);
-                    context.octokit.issues.createComment(context.issue({
-                        body: res.message
-                    }));
-                } else if (comment.startsWith("/intern")) {
-                    let res = await handle_mentor_cmd(context.payload.comment.user, comment, config, task);
-                    context.octokit.issues.createComment(context.issue({
-                        body: res.message
-                    }));
-                } else {
-                    context.log.debug("Normal Comment, skipping...")
-                }
+                await context.octokit.issues.createComment(context.issue({
+                    body: checkRes.message
+                }));
             }
         } else {
-            context.log.error("R2cn label not found or config parsing error")
+            const comment = context.payload.comment.body.trim();
+
+            if (comment.startsWith("/request")) {
+                let res = await Student.handle_stu_cmd(context, context.payload.comment.user, comment, config, task);
+                context.octokit.issues.createComment(context.issue({
+                    body: res.message
+                }));
+            } else if (comment.startsWith("/intern")) {
+                let res = await handle_mentor_cmd(context, context.payload.comment.user, comment, config, task);
+                context.octokit.issues.createComment(context.issue({
+                    body: res.message
+                }));
+            } else {
+                context.log.debug("Normal Comment, skipping...")
+            }
         }
     });
 };

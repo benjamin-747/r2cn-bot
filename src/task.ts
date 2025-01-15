@@ -2,6 +2,9 @@ import { Issue, Repository } from "@octokit/webhooks-types";
 import { Config, fetchData, postData } from "./common.js";
 
 export interface Task {
+    repo: string,
+    owner: string,
+    github_issue_number: number,
     github_repo_id: number,
     github_issue_id: number,
     points?: number,
@@ -27,20 +30,26 @@ export async function getTask(issue_id: number) {
     return res
 }
 
-interface newTask {
+interface TaskCreate {
+    repo: string,
+    owner: string,
+    github_issue_number: number,
     github_repo_id: number,
     github_issue_id: number,
     score: number,
     mentor_github_login: string,
 }
 
-export async function newTask(repo: Repository, issue: Issue, score: number) {
+export async function newTask(repository: Repository, issue: Issue, score: number) {
     const req = {
-        github_repo_id: repo.id,
+        repo: repository.name,
+        owner: repository.owner.login,
+        github_issue_number: issue.number,
+        github_repo_id: repository.id,
         github_issue_id: issue.id,
         score: score,
         mentor_github_login: issue.user.login,
-    }
+    } as TaskCreate;
     const apiUrl = `${process.env.API_ENDPOINT}/task/new`;
     const res = await postData<Task[], SearchTaskReq>(apiUrl, req).then((res) => {
         return res.data
