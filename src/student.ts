@@ -2,9 +2,10 @@
 import { User } from "@octokit/webhooks-types";
 import { CommandRequest, Config, postData } from "./common.js";
 import { Task, TaskStatus } from "./task.js";
+import { Context } from "probot";
 
 
-export async function handle_stu_cmd(student: User, command: string, config: Config, task: Task) {
+export async function handle_stu_cmd(context: Context, student: User, command: string, config: Config, task: Task) {
     var command_res = {
         result: false,
         message: "",
@@ -40,7 +41,8 @@ export async function handle_stu_cmd(student: User, command: string, config: Con
 
             if (await requestAssign({
                 github_issue_id: task.github_issue_id,
-                login: student.login
+                login: student.login,
+                github_id: student.id
             })) {
                 return setResponse(config.requestAssign.success, true);
             } else {
@@ -55,12 +57,21 @@ export async function handle_stu_cmd(student: User, command: string, config: Con
                 return setResponse(config.command.noPermission);
             }
 
+            //check related PRs
+            // const res = await context.octokit.issues.get({
+            //     owner: task.owner,
+            //     repo: task.repo,
+            //     issue_number: task.github_issue_number
+            // });
+
+            // if (res.data.pull_request == undefined) {
+            //     return setResponse(config.requestComplete.noRelatedPR);
+            // }
             await requestComplete({
                 github_issue_id: task.github_issue_id,
-                login: student.login
+                login: student.login,
+                github_id: student.id
             })
-
-            // TODO: Add logic to check related PRs
             return setResponse(config.requestComplete.success, true);
 
         case "/request-release":
@@ -74,9 +85,10 @@ export async function handle_stu_cmd(student: User, command: string, config: Con
 
             await releaseTask({
                 github_issue_id: task.github_issue_id,
-                login: student.login
+                login: student.login,
+                github_id: student.id
             })
-            return setResponse(config.requestComplete.success, true);
+            return setResponse(config.requestRelease.success, true);
 
         default:
             return setResponse("Unsupported command");

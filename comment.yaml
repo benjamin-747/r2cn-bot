@@ -1,0 +1,57 @@
+project:
+  noneProjectComment: >
+    Thanks for joining R2CN Projetc! You need to first submit a PR to modify the organization.yaml file to apply for your project to be included in the R2CN program.
+  noneMaintainerComment: >
+    You do not have permission to apply for the R2CN internship tasks. Please contact your organization administrator to submit a PR and to update the R2CN organization.yaml file.
+
+task:
+  scoreUndefinedComment: >
+    Please add the R2CN-Score label to the issue. `Score` represents the task’s score.
+  scoreInvalidComment: >
+    The score must be within the range of 2 to 50.
+  insufficientScoreComment: >
+    The current organization has insufficient remaining points. Please contact the administrator.
+  toomanyTask: >
+    There are too many tasks currently active. Please check if there are 3 tasks already, or contact the administrator.
+
+command:
+  noPermission: >
+    Operation failed, You are not allowed to operate this task.
+  invalidTaskState: >
+    Operation failed, the current task status does not allow this operation.
+
+requestAssign:
+  success: >
+    Claim successful, awaiting review.
+  waitingInfoReview: >
+    Claim failed, personal information is under review.
+  existTask: >
+    Claim failed, you have already claimed another task.
+  alreadyClaim: >
+    Claim failed, you have already claimed this task, please do not repeat claim. 
+
+internDisapprove:
+  success: >
+    Operation successful, awaiting claim.
+
+internApprove:
+  success: >
+    Operation successful, awaiting PR.
+
+requestComplete:
+  success: >
+    Request complete successful, awaiting finish intern review.
+  noRelatedPR: >
+    Request complete failed, the task must be associated with at least one PR.
+
+requestRelease:
+  success: >
+    Request release task successful, awaiting another claim.
+
+internFail:
+  success: >
+    Release task successful, awaiting another claim.
+
+internDone:
+  success: >
+    Operation successful, task close.

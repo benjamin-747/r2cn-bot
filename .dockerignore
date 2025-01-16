@@ -9,4 +9,3 @@
 **/.editorconfig
 **/dist
 **/*.pem
-Dockerfile
