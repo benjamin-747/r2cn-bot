@@ -16,7 +16,7 @@ export async function handle_mentor_cmd(context: Context, config: Config, payloa
         result: false,
         message: "",
     };
-    const { mentor, command, issue, task } = payload;
+    const { mentor, command, task } = payload;
     const setResponse = (message: string, result: boolean = false) => {
         command_res.message = message;
         command_res.result = result;
@@ -70,15 +70,11 @@ export async function handle_mentor_cmd(context: Context, config: Config, payloa
             await internDone(req);
             return setResponse(config.comment.internDone.success, true);
         case "/intern-close":
-            let label = issue.labels?.find((label) => label.name.startsWith("r2cn"));
-            if (label) {
-                await context.octokit.issues.removeLabel({
-                    owner: task.owner,
-                    repo: task.repo,
-                    issue_number: task.github_issue_number,
-                    name: label.name
-                });
-            }
+            await context.octokit.issues.removeAllLabels({
+                owner: task.owner,
+                repo: task.repo,
+                issue_number: task.github_issue_number,
+            });
             await internClose(req);
             return setResponse(config.comment.internClose.success, true);
         default:

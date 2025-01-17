@@ -42,6 +42,7 @@ interface ProjectComment {
 
 interface TaskComment {
     success: string,
+    notAllowedModify: string,
     taskNotFound: string,
     scoreUndefinedComment: string,
     scoreInvalidComment: string,
@@ -95,6 +96,7 @@ export interface CommandRequest {
     github_issue_id: number,
     login: string
     github_id: number
+    student_name?: string
 }
 
 interface ApiResponse<T> {

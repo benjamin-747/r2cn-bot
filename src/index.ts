@@ -52,13 +52,19 @@ export default (app: Probot) => {
                 }));
             }
         } else {
-            context.log.debug("Task Exist, skipping message...")
+            if (context.payload.action === "labeled") {
+                await context.octokit.issues.createComment(context.issue({
+                    body: config.comment.task.notAllowedModify
+                }));
+            } else {
+                context.log.debug("Task Exist, skipping message...")
+            }
         }
     });
 
     app.on(["issue_comment.created"], async (context) => {
         const config = await fetchConfig(context);
-        if (context.payload.comment.user.type === "Bot") {
+        if (context.isBot) {
             // context.log.debug("This comment was posted by a bot!");
             return
         }
@@ -66,25 +72,31 @@ export default (app: Probot) => {
             context.log.error("Config parsing error");
             return
         }
-        const task = await Task.getTask(context.payload.issue.id);
-        if (task == null) {
-            await context.octokit.issues.createComment(context.issue({
-                body: config.comment.task.taskNotFound
-            }));
-        }
         const command = context.payload.comment.body.trim();
-        if (command.startsWith("/request")) {
-            let res = await Student.handle_stu_cmd(context, config, { student: context.payload.comment.user, command, task });
-            context.octokit.issues.createComment(context.issue({
-                body: res.message
-            }));
-        } else if (command.startsWith("/intern")) {
-            let res = await handle_mentor_cmd(context, config, {
-                mentor: context.payload.comment.user, command, issue: context.payload.issue, task
-            });
-            context.octokit.issues.createComment(context.issue({
-                body: res.message
-            }));
+        if (command.startsWith("/")) {
+            const task = await Task.getTask(context.payload.issue.id);
+            if (task == null) {
+                await context.octokit.issues.createComment(context.issue({
+                    body: config.comment.task.taskNotFound
+                }));
+            }
+            if (command.startsWith("/request")) {
+                let res = await Student.handle_stu_cmd(context, config, { student: context.payload.comment.user, command, task });
+                context.octokit.issues.createComment(context.issue({
+                    body: res.message
+                }));
+            } else if (command.startsWith("/intern")) {
+                let res = await handle_mentor_cmd(context, config, {
+                    mentor: context.payload.comment.user, command, issue: context.payload.issue, task
+                });
+                context.octokit.issues.createComment(context.issue({
+                    body: res.message
+                }));
+            } else {
+                context.octokit.issues.createComment(context.issue({
+                    body: "Unsupported command"
+                }));
+            }
         } else {
             context.log.debug("Normal Comment, skipping...")
         }

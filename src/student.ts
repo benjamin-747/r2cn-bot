@@ -28,13 +28,20 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
         return task.student_github_login === student.login;
     };
 
+    const req = {
+        github_issue_id: task.github_issue_id,
+        login: student.login,
+        github_id: student.id
+    };
+
     switch (command) {
         case "/request-assign":
             if (task.task_status !== TaskStatus.Open) {
                 return setResponse(config.comment.command.invalidTaskState);
             }
 
-            if (!await verifyStudentIdentity(student.login)) {
+            const verify = await verifyStudentIdentity(student.login);
+            if (!verify.success) {
                 return setResponse(config.comment.requestAssign.waitingInfoReview);
             }
 
@@ -49,7 +56,8 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
             if (await requestAssign({
                 github_issue_id: task.github_issue_id,
                 login: student.login,
-                github_id: student.id
+                github_id: student.id,
+                student_name: verify.student_name,
             })) {
                 return setResponse(config.comment.requestAssign.success, true);
             } else {
@@ -74,11 +82,7 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
             // if (res.data.pull_request == undefined) {
             //     return setResponse(config.requestComplete.noRelatedPR);
             // }
-            await requestComplete({
-                github_issue_id: task.github_issue_id,
-                login: student.login,
-                github_id: student.id
-            })
+            await requestComplete(req)
             return setResponse(config.comment.requestComplete.success, true);
 
         case "/request-release":
@@ -90,11 +94,7 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
                 return setResponse(config.comment.command.noPermission);
             }
 
-            await releaseTask({
-                github_issue_id: task.github_issue_id,
-                login: student.login,
-                github_id: student.id
-            })
+            await releaseTask(req)
             return setResponse(config.comment.requestRelease.success, true);
 
         default:
@@ -107,9 +107,14 @@ interface UserReq {
     login: string
 }
 
+interface VerifyStuRes {
+    success: true,
+    student_name?: string
+}
+
 async function verifyStudentIdentity(login: string) {
     const apiUrl = `${process.env.API_ENDPOINT}/student/validate`;
-    const res = await postData<boolean, UserReq>(apiUrl, {
+    const res = await postData<VerifyStuRes, UserReq>(apiUrl, {
         "login": login
     }).then((res) => {
         return res.data
