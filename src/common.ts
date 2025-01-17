@@ -1,7 +1,26 @@
 import axios, { AxiosResponse } from "axios";
 
-export interface Config {
+export interface R2CN {
     repos: Repo[];
+}
+
+interface Repo {
+    name: string,
+    maintainers: Maintainer[]
+}
+
+export interface Maintainer {
+    login: string,
+    task: number,
+    maxScore: number
+}
+
+export interface Config {
+    comment: BotComment,
+    r2cn: R2CN,
+}
+
+export interface BotComment {
     project: ProjectComment,
     task: TaskComment,
     command: CommandComment,
@@ -12,7 +31,9 @@ export interface Config {
     requestRelease: RequestRelease,
     internFail: InternFail,
     internDone: InternDone,
+    internClose: InternClose,
 }
+
 
 interface ProjectComment {
     noneProjectComment: string,
@@ -20,10 +41,13 @@ interface ProjectComment {
 }
 
 interface TaskComment {
+    success: string,
+    taskNotFound: string,
     scoreUndefinedComment: string,
     scoreInvalidComment: string,
     insufficientScoreComment: string,
     toomanyTask: string,
+    userToomanyTask: string,
 }
 
 interface CommandComment {
@@ -62,9 +86,9 @@ interface InternFail {
 interface InternDone {
     success: string
 }
-interface Repo {
-    name: string,
-    maintainers: string[]
+
+interface InternClose {
+    success: string
 }
 
 export interface CommandRequest {
@@ -72,7 +96,6 @@ export interface CommandRequest {
     login: string
     github_id: number
 }
-
 
 interface ApiResponse<T> {
     message: string;

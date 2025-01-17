@@ -1,5 +1,5 @@
 import { Issue, Repository } from "@octokit/webhooks-types";
-import { Config, fetchData, postData } from "./common.js";
+import { Maintainer, Config, fetchData, postData } from "./common.js";
 
 export interface Task {
     repo: string,
@@ -70,7 +70,7 @@ export interface CheckTaskResults {
 interface SearchTaskReq {
     github_repo_id: number
 }
-export async function checkTask(repo: Repository, issue: Issue, config: Config) {
+export async function checkTask(repo: Repository, issue: Issue, config: Config, maintainer: Maintainer) {
 
     const label = issue.labels?.find(label => label.name.startsWith("r2cn"));
     var scoreStr = label?.name.split('-')[1];
@@ -82,27 +82,28 @@ export async function checkTask(repo: Repository, issue: Issue, config: Config) 
     };
 
     if (scoreStr == undefined) {
-        fail_res.message = config.task.scoreUndefinedComment;
+        fail_res.message = config.comment.task.scoreUndefinedComment;
         return fail_res
     } else {
         score = parseInt(scoreStr)
     }
 
-    if (score > 50 || score < 2) {
-        fail_res.message = config.task.scoreInvalidComment;
+    if (score > maintainer.maxScore || score < 2) {
+        fail_res.message = config.comment.task.scoreInvalidComment;
         return fail_res
     }
 
     const apiUrl = `${process.env.API_ENDPOINT}/task/search`;
     const req = {
-        github_repo_id: repo.id
+        github_repo_id: repo.id,
+        github_mentor_login: maintainer.login
     }
     const tasks: Task[] = await postData<Task[], SearchTaskReq>(apiUrl, req).then((res) => {
         return res.data
     });
 
-    if (tasks.length >= 3) {
-        fail_res.message = config.task.toomanyTask;
+    if (tasks.length >= maintainer.task) {
+        fail_res.message = config.comment.task.userToomanyTask;
         return fail_res
     }
 
