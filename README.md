@@ -30,4 +30,4 @@ For more, check out the [Contributing Guide](CONTRIBUTING.md).
 
 ## License
 
-[ISC](LICENSE) © 2024 benjamin.747
+[ISC](LICENSE) © 2024 R2CN-DEV

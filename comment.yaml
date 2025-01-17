@@ -5,14 +5,20 @@ project:
     You do not have permission to apply for the R2CN internship tasks. Please contact your organization administrator to submit a PR and to update the R2CN organization.yaml file.
 
 task:
+  success: >
+    Task created successfully.
+  taskNotFound: >
+    You need to add the R2CN-Score label to create a new task.
   scoreUndefinedComment: >
     Please add the R2CN-Score label to the issue. `Score` represents the task’s score.
   scoreInvalidComment: >
-    The score must be within the range of 2 to 50.
+    The score exceeds the limit configured by the organizer or less than 2.
   insufficientScoreComment: >
     The current organization has insufficient remaining points. Please contact the administrator.
   toomanyTask: >
     There are too many tasks currently active. Please check if there are 3 tasks already, or contact the administrator.
+  userToomanyTask: >
+    The number of tasks currently under your name exceeds the limit.
 
 command:
   noPermission: >
@@ -55,3 +61,7 @@ internFail:
 internDone:
   success: >
     Operation successful, task close.
+
+internClose:
+  success: >
+    Operation successful, task not traceing.
