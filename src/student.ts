@@ -5,11 +5,18 @@ import { Task, TaskStatus } from "./task.js";
 import { Context } from "probot";
 
 
-export async function handle_stu_cmd(context: Context, student: User, command: string, config: Config, task: Task) {
+interface Payload {
+    student: User,
+    command: string,
+    task: Task
+}
+
+export async function handle_stu_cmd(context: Context, config: Config, payload: Payload) {
     var command_res = {
         result: false,
         message: "",
     };
+    const { student, command, task } = payload;
 
     const setResponse = (message: string, result: boolean = false) => {
         command_res.message = message;
@@ -24,19 +31,19 @@ export async function handle_stu_cmd(context: Context, student: User, command: s
     switch (command) {
         case "/request-assign":
             if (task.task_status !== TaskStatus.Open) {
-                return setResponse(config.command.invalidTaskState);
+                return setResponse(config.comment.command.invalidTaskState);
             }
 
             if (!await verifyStudentIdentity(student.login)) {
-                return setResponse(config.requestAssign.waitingInfoReview);
+                return setResponse(config.comment.requestAssign.waitingInfoReview);
             }
 
             if (task.student_github_login === student.login) {
-                return setResponse(config.requestAssign.alreadyClaim);
+                return setResponse(config.comment.requestAssign.alreadyClaim);
             }
 
             if (!await verifyStudentTask(student.login)) {
-                return setResponse(config.requestAssign.existTask);
+                return setResponse(config.comment.requestAssign.existTask);
             }
 
             if (await requestAssign({
@@ -44,17 +51,17 @@ export async function handle_stu_cmd(context: Context, student: User, command: s
                 login: student.login,
                 github_id: student.id
             })) {
-                return setResponse(config.requestAssign.success, true);
+                return setResponse(config.comment.requestAssign.success, true);
             } else {
                 return setResponse("API ERROR");
             }
         case "/request-complete":
             if (task.task_status !== TaskStatus.Assigned) {
-                return setResponse(config.command.invalidTaskState);
+                return setResponse(config.comment.command.invalidTaskState);
             }
 
             if (!isStudentAuthorized(task, student)) {
-                return setResponse(config.command.noPermission);
+                return setResponse(config.comment.command.noPermission);
             }
 
             //check related PRs
@@ -72,15 +79,15 @@ export async function handle_stu_cmd(context: Context, student: User, command: s
                 login: student.login,
                 github_id: student.id
             })
-            return setResponse(config.requestComplete.success, true);
+            return setResponse(config.comment.requestComplete.success, true);
 
         case "/request-release":
             if (task.task_status !== TaskStatus.Assigned) {
-                return setResponse(config.command.invalidTaskState);
+                return setResponse(config.comment.command.invalidTaskState);
             }
 
             if (!isStudentAuthorized(task, student)) {
-                return setResponse(config.command.noPermission);
+                return setResponse(config.comment.command.noPermission);
             }
 
             await releaseTask({
@@ -88,7 +95,7 @@ export async function handle_stu_cmd(context: Context, student: User, command: s
                 login: student.login,
                 github_id: student.id
             })
-            return setResponse(config.requestRelease.success, true);
+            return setResponse(config.comment.requestRelease.success, true);
 
         default:
             return setResponse("Unsupported command");

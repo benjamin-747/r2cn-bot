@@ -1,56 +1,49 @@
 import { Context, Probot } from "probot";
 import yaml from "js-yaml";
 import * as Task from "./task.js";
-import { Config } from "./common.js";
+import { R2CN, BotComment } from "./common.js";
 import * as Student from "./student.js";
 import { handle_mentor_cmd } from "./mentor.js";
 
 
 export default (app: Probot) => {
     app.log.info(`api endpoint: ${process.env.API_ENDPOINT}`);
-
-    app.on(["issue_comment.created", "issue_comment.edited"], async (context) => {
-        const comment = context.payload.comment;
-        const config = await fetchConfig(context);
-        if (comment.user.type === "Bot") {
-            context.log.debug("This comment was posted by a bot!");
-            return
-        }
+    app.on(["issues.opened", "issues.labeled"], async (context) => {
         const labels = context.payload.issue.labels;
-        const hasLabel = labels.some((label) => label.name.startsWith("r2cn"));
-        const creator = context.payload.issue.user.login;
-        const repo_full_name = context.payload.repository.full_name;
-
-        if (hasLabel) {
-            context.log.debug("R2cn label not found, skipping message")
+        const hasLabel = labels?.some((label) => label.name.startsWith("r2cn"));
+        if (!hasLabel) {
+            context.log.debug("R2cn label not found, skipping message...")
             return
         }
+        const config = await fetchConfig(context);
         if (config == null) {
             context.log.error("Config parsing error");
             return
         }
-        const repo = config.repos.find((repo) => repo.name === repo_full_name);
+        const repo_full_name = context.payload.repository.full_name;
+        const repo = config.r2cn?.repos.find((repo) => repo.name === repo_full_name);
         if (!repo) {
             await context.octokit.issues.createComment(context.issue({
-                body: config.project.noneProjectComment,
+                body: config.comment.project.noneProjectComment,
             }));
             return
         }
-
-        if (!repo.maintainers.includes(creator)) {
+        const creator = context.payload.issue.user.login;
+        const maintainer = repo.maintainers.find(maintainer => maintainer.login === creator);
+        if (!maintainer) {
             await context.octokit.issues.createComment(context.issue({
-                body: config.project.noneMaintainerComment,
+                body: config.comment.project.noneMaintainerComment,
             }));
             return
         }
         const task = await Task.getTask(context.payload.issue.id);
         if (task == null) {
-            const checkRes: Task.CheckTaskResults = await Task.checkTask(context.payload.repository, context.payload.issue, config);
+            const checkRes: Task.CheckTaskResults = await Task.checkTask(context.payload.repository, context.payload.issue, config, maintainer);
             if (checkRes.result) {
                 const newTaskRes = await Task.newTask(context.payload.repository, context.payload.issue, checkRes.score);
                 if (newTaskRes) {
                     await context.octokit.issues.createComment(context.issue({
-                        body: "Task created successfully."
+                        body: config.comment.task.success
                     }));
                 }
             } else {
@@ -59,41 +52,79 @@ export default (app: Probot) => {
                 }));
             }
         } else {
-            const comment = context.payload.comment.body.trim();
+            context.log.debug("Task Exist, skipping message...")
+        }
+    });
 
-            if (comment.startsWith("/request")) {
-                let res = await Student.handle_stu_cmd(context, context.payload.comment.user, comment, config, task);
-                context.octokit.issues.createComment(context.issue({
-                    body: res.message
-                }));
-            } else if (comment.startsWith("/intern")) {
-                let res = await handle_mentor_cmd(context, context.payload.comment.user, comment, config, task);
-                context.octokit.issues.createComment(context.issue({
-                    body: res.message
-                }));
-            } else {
-                context.log.debug("Normal Comment, skipping...")
-            }
+    app.on(["issue_comment.created"], async (context) => {
+        const config = await fetchConfig(context);
+        if (context.payload.comment.user.type === "Bot") {
+            // context.log.debug("This comment was posted by a bot!");
+            return
+        }
+        if (config == null) {
+            context.log.error("Config parsing error");
+            return
+        }
+        const task = await Task.getTask(context.payload.issue.id);
+        if (task == null) {
+            await context.octokit.issues.createComment(context.issue({
+                body: config.comment.task.taskNotFound
+            }));
+        }
+        const command = context.payload.comment.body.trim();
+        if (command.startsWith("/request")) {
+            let res = await Student.handle_stu_cmd(context, config, { student: context.payload.comment.user, command, task });
+            context.octokit.issues.createComment(context.issue({
+                body: res.message
+            }));
+        } else if (command.startsWith("/intern")) {
+            let res = await handle_mentor_cmd(context, config, {
+                mentor: context.payload.comment.user, command, issue: context.payload.issue, task
+            });
+            context.octokit.issues.createComment(context.issue({
+                body: res.message
+            }));
+        } else {
+            context.log.debug("Normal Comment, skipping...")
         }
     });
 };
 
 
 async function fetchConfig(context: Context) {
-    const response = await context.octokit.repos.getContent({
+    const r2cn_conf = await context.octokit.repos.getContent({
         owner: "r2cn-dev",
-        repo: "organization",
-        path: "organization.yaml",
+        repo: "r2cn",
+        path: "r2cn.yaml",
     });
+    let r2cn: R2CN | null = null;
 
-    if ("type" in response.data && response.data.type === "file") {
-        // 如果是文件，解码内容
-        const content = Buffer.from(response.data.content || "", "base64").toString("utf8");
-        context.log.debug("Config file content:", content);
-        const config: Config = yaml.load(content) as Config;
-        return config;
+    if ("type" in r2cn_conf.data && r2cn_conf.data.type === "file") {
+        const content = Buffer.from(r2cn_conf.data.content || "", "base64").toString("utf8");
+        r2cn = yaml.load(content) as R2CN;
     } else {
-        context.log.error("The path is not a file.");
+        context.log.error("Parsing r2cn.yaml failed.");
+    }
+
+    const comment_conf = await context.octokit.repos.getContent({
+        owner: "r2cn-dev",
+        repo: "r2cn-bot",
+        path: "comment.yaml",
+    });
+    let comment: BotComment | null = null;
+
+    if ("type" in comment_conf.data && comment_conf.data.type === "file") {
+        const content = Buffer.from(comment_conf.data.content || "", "base64").toString("utf8");
+        comment = yaml.load(content) as BotComment;
+    } else {
+        context.log.error("Parsing comment.yaml failed.");
+    }
+    // 检查是否成功解析
+    if (r2cn && comment) {
+        return { comment, r2cn };
+    } else {
+        context.log.error("Failed to load Config. Either r2cn or comment is null.");
         return null;
     }
 }
