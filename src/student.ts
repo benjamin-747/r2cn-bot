@@ -2,7 +2,6 @@
 import { User } from "@octokit/webhooks-types";
 import { CommandRequest, Config, postData } from "./common.js";
 import { Task, TaskStatus } from "./task.js";
-import { Context } from "probot";
 
 
 interface Payload {
@@ -11,7 +10,7 @@ interface Payload {
     task: Task
 }
 
-export async function handle_stu_cmd(context: Context, config: Config, payload: Payload) {
+export async function handle_stu_cmd(config: Config, payload: Payload) {
     var command_res = {
         result: false,
         message: "",
