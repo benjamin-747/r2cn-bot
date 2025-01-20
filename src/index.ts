@@ -81,7 +81,7 @@ export default (app: Probot) => {
                 }));
             }
             if (command.startsWith("/request")) {
-                let res = await Student.handle_stu_cmd(context, config, { student: context.payload.comment.user, command, task });
+                let res = await Student.handle_stu_cmd(config, { student: context.payload.comment.user, command, task });
                 context.octokit.issues.createComment(context.issue({
                     body: res.message
                 }));

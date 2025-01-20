@@ -7,6 +7,8 @@ project:
 task:
   success: >
     Task created successfully.
+  notAllowedModify: >
+    Modifying the score after task creation is not allowed. To make changes, please use /intern-close to close the task first.
   taskNotFound: >
     You need to add the R2CN-Score label to create a new task.
   scoreUndefinedComment: >
@@ -30,7 +32,7 @@ requestAssign:
   success: >
     Claim successful, awaiting review.
   waitingInfoReview: >
-    Claim failed, personal information is under review.
+    Claim failed, You need to first register on https://r2cn.dev and wait for approval.
   existTask: >
     Claim failed, you have already claimed another task.
   alreadyClaim: >
