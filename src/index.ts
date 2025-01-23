@@ -8,7 +8,8 @@ import { handle_mentor_cmd } from "./mentor.js";
 
 export default (app: Probot) => {
     app.log.info(`api endpoint: ${process.env.API_ENDPOINT}`);
-    app.on(["issues.opened", "issues.labeled"], async (context) => {
+    // 删除issues.opend 事件避免重复消息
+    app.on(["issues.labeled"], async (context) => {
         const labels = context.payload.issue.labels;
         const hasLabel = labels?.some((label) => label.name.startsWith("r2cn"));
         if (!hasLabel) {
@@ -29,7 +30,7 @@ export default (app: Probot) => {
             return
         }
         const creator = context.payload.issue.user.login;
-        const maintainer = repo.maintainers.find(maintainer => maintainer.login === creator);
+        const maintainer = repo.maintainers.find(maintainer => maintainer.id === creator);
         if (!maintainer) {
             await context.octokit.issues.createComment(context.issue({
                 body: config.comment.project.noneMaintainerComment,

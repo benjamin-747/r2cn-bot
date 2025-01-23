@@ -10,7 +10,7 @@ interface Repo {
 }
 
 export interface Maintainer {
-    login: string,
+    id: string,
     task: number,
     maxScore: number
 }
