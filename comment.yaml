@@ -1,69 +1,67 @@
 project:
   noneProjectComment: >
-    Thanks for joining R2CN Projetc! You need to first submit a PR to modify the organization.yaml file to apply for your project to be included in the R2CN program.
+    欢迎参与R2CN项目，在开始之前，您需要先提交一个PR， 详情可参考文档 https://r2cn.dev/docs/project/signup
   noneMaintainerComment: >
-    You do not have permission to apply for the R2CN internship tasks. Please contact your organization administrator to submit a PR and to update the R2CN organization.yaml file.
+    您当前没有权限来创建R2CN任务，请联系您仓库或者组织管理员提交PR将您的GitHub ID加入r2cn.yaml文件，参考 https://r2cn.dev/docs/project/mentor-and-tasks/mentor。
 
 task:
   success: >
-    Task created successfully.
+    任务创建成功。
   notAllowedModify: >
-    Modifying the score after task creation is not allowed. To make changes, please use /intern-close to close the task first.
+    创建任务后无法修改分值等信息，如需修改，请先使用 /intern-close 命令关闭追踪后，再选择新的标签。
   taskNotFound: >
-    You need to add the R2CN-Score label to create a new task.
+    任务还未创建，需要使用“R2CN-分值”标签先创建任务。
   scoreUndefinedComment: >
-    Please add the R2CN-Score label to the issue. `Score` represents the task’s score.
+    请使用“R2CN-分值”标签来创建任务，当前标签的分值不正确。
   scoreInvalidComment: >
-    The score exceeds the limit configured by the organizer or less than 2.
-  insufficientScoreComment: >
-    The current organization has insufficient remaining points. Please contact the administrator.
-  toomanyTask: >
-    There are too many tasks currently active. Please check if there are 3 tasks already, or contact the administrator.
+    R2CN-分值超出组织管理员配置的上限，或者分值小于2。
   userToomanyTask: >
-    The number of tasks currently under your name exceeds the limit.
+    当前激活的任务数量超过组织管理员配置的上限，请检查任务数量或者联系管理员修改上限。
 
 command:
   noPermission: >
-    Operation failed, You are not allowed to operate this task.
+    操作失败，您当前没有权限修改该任务。
   invalidTaskState: >
-    Operation failed, the current task status does not allow this operation.
+    操作失败，当前任务的状态不允许进行该操作。
 
 requestAssign:
   success: >
-    Claim successful, awaiting review.
+    认领成功，等待导师审核，请及时联系导师进行审核。
   waitingInfoReview: >
-    Claim failed, You need to first register on https://r2cn.dev and wait for approval.
+    认领失败，需要先到 https://summer-ospp.ac.cn/r2cnLogin 进行学生注册并通过审核后才能认领任务。
   existTask: >
-    Claim failed, you have already claimed another task.
+    认领失败，你已经存在认领中的任务了。
+  claimByOther: >
+    认领失败，已经有同学申请了此任务，请选择其他任务。
   alreadyClaim: >
-    Claim failed, you have already claimed this task, please do not repeat claim. 
+    认领失败，该任务已经被你认领，请不要重复认领！
 
 internDisapprove:
   success: >
-    Operation successful, awaiting claim.
+    拒绝认领成功, 任务释放为开放状态。
 
 internApprove:
   success: >
-    Operation successful, awaiting PR.
+    认领审核成功，已将该任务分配给学生。
 
 requestComplete:
   success: >
-    Request complete successful, awaiting finish intern review.
+    请求完成成功, 等待导师进行完成审核。
   noRelatedPR: >
-    Request complete failed, the task must be associated with at least one PR.
+    请求完成失败, 至少需要一个关联的PR。
 
 requestRelease:
   success: >
-    Request release task successful, awaiting another claim.
+    请求释放成功，当前任务重新开放。
 
 internFail:
   success: >
-    Release task successful, awaiting another claim.
+    学生任务失败，当前任务重新开放。
 
 internDone:
   success: >
-    Operation successful, task close.
+    操作成功，任务关闭并发放积分给学生。
 
 internClose:
   success: >
-    Operation successful, task not traceing.
+    操作成功，任务关闭不再追踪。

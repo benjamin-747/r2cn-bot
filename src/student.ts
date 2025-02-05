@@ -35,6 +35,10 @@ export async function handle_stu_cmd(config: Config, payload: Payload) {
 
     switch (command) {
         case "/request-assign":
+            if (task.task_status == TaskStatus.RequestAssign) {
+                return setResponse(config.comment.requestAssign.claimByOther);
+            }
+
             if (task.task_status !== TaskStatus.Open) {
                 return setResponse(config.comment.command.invalidTaskState);
             }
@@ -97,7 +101,7 @@ export async function handle_stu_cmd(config: Config, payload: Payload) {
             return setResponse(config.comment.requestRelease.success, true);
 
         default:
-            return setResponse("Unsupported command");
+            return setResponse("Unsupported command. Currently, only /request-assign, /request-complete, and /request-release are supported.");
     }
 }
 

@@ -78,7 +78,7 @@ export async function handle_mentor_cmd(context: Context, config: Config, payloa
             await internClose(req);
             return setResponse(config.comment.internClose.success, true);
         default:
-            return setResponse("Unsupported command");
+            return setResponse("Unsupported command. Currently, only /intern-disapprove, /intern-approve, /intern-fail, /intern-done and /intern-close are supported.");
     }
 }
 

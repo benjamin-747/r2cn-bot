@@ -96,7 +96,7 @@ export async function checkTask(repo: Repository, issue: Issue, config: Config, 
     const apiUrl = `${process.env.API_ENDPOINT}/task/search`;
     const req = {
         github_repo_id: repo.id,
-        github_mentor_login: maintainer.login
+        github_mentor_login: maintainer.id
     }
     const tasks: Task[] = await postData<Task[], SearchTaskReq>(apiUrl, req).then((res) => {
         return res.data

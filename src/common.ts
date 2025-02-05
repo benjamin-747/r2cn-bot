@@ -10,7 +10,7 @@ interface Repo {
 }
 
 export interface Maintainer {
-    login: string,
+    id: string,
     task: number,
     maxScore: number
 }
@@ -46,8 +46,6 @@ interface TaskComment {
     taskNotFound: string,
     scoreUndefinedComment: string,
     scoreInvalidComment: string,
-    insufficientScoreComment: string,
-    toomanyTask: string,
     userToomanyTask: string,
 }
 
@@ -60,6 +58,7 @@ interface RequestAssign {
     success: string,
     waitingInfoReview: string,
     existTask: string,
+    claimByOther: string,
     alreadyClaim: string,
 }
 
