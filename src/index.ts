@@ -11,7 +11,7 @@ export default (app: Probot) => {
     // 删除issues.opend 事件避免重复消息
     app.on(["issues.labeled"], async (context) => {
         const labels = context.payload.issue.labels;
-        const hasLabel = labels?.some((label) => label.name.startsWith("r2cn"));
+        const hasLabel = labels?.some((label) => label.name.startsWith("r2cn-"));
         if (!hasLabel) {
             context.log.debug("R2cn label not found, skipping message...")
             return
