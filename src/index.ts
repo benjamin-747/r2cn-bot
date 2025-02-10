@@ -46,11 +46,30 @@ export default (app: Probot) => {
             }));
             return
         }
+
+        var scoreStr = label?.name.split('-')[1];
+        var score = 0;
+        if (scoreStr == undefined) {
+            await context.octokit.issues.createComment(context.issue({
+                body: config.comment.task.scoreUndefinedComment,
+            }));
+            return
+        } else {
+            score = parseInt(scoreStr)
+        }
+
+        if (score > maintainer.maxScore || score < 2) {
+            await context.octokit.issues.createComment(context.issue({
+                body: config.comment.task.scoreInvalidComment,
+            }));
+            return
+        }
+
         const task = await Task.getTask(context.payload.issue.id);
         if (task == null) {
-            const checkRes: Task.CheckTaskResults = await Task.checkTask(context.payload.repository, label, config, maintainer);
+            const checkRes: Task.CheckTaskResults = await Task.checkTask(context.payload.repository, config, maintainer);
             if (checkRes.result) {
-                const newTaskRes = await Task.newTask(context.payload.repository, context.payload.issue, checkRes.score);
+                const newTaskRes = await Task.newTask(context.payload.repository, context.payload.issue, score);
                 if (newTaskRes) {
                     await context.octokit.issues.createComment(context.issue({
                         body: config.comment.task.success
@@ -62,12 +81,17 @@ export default (app: Probot) => {
                 }));
             }
         } else {
-            if (context.payload.action === "labeled") {
+            if (task.task_status == Task.TaskStatus.Finished) {
                 await context.octokit.issues.createComment(context.issue({
                     body: config.comment.task.notAllowedModify
                 }));
             } else {
-                context.log.debug("Task Exist, skipping message...")
+                // Update Task Score
+                await Task.updateTaskScore(context.payload.issue, score);
+                await context.octokit.issues.createComment(context.issue({
+                    body: config.comment.task.successUpdate + score
+                }));
+
             }
         }
     });
@@ -104,7 +128,7 @@ export default (app: Probot) => {
                 }));
             } else {
                 context.octokit.issues.createComment(context.issue({
-                    body: "Unsupported command"
+                    body: "错误的命令"
                 }));
             }
         } else {
@@ -116,7 +140,7 @@ export default (app: Probot) => {
 
 async function fetchConfig(context: Context) {
     const r2cn_conf = await context.octokit.repos.getContent({
-        owner: "r2cn-dev",
+        owner: "benjamin-747",
         repo: "r2cn",
         path: "r2cn.yaml",
     });
@@ -130,7 +154,7 @@ async function fetchConfig(context: Context) {
     }
 
     const comment_conf = await context.octokit.repos.getContent({
-        owner: "r2cn-dev",
+        owner: "benjamin-747",
         repo: "r2cn-bot",
         path: "comment.yaml",
     });

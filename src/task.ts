@@ -1,4 +1,4 @@
-import { Issue, Label, Repository } from "@octokit/webhooks-types";
+import { Issue, Repository } from "@octokit/webhooks-types";
 import { Maintainer, Config, fetchData, postData } from "./common.js";
 
 export interface Task {
@@ -51,7 +51,7 @@ export async function newTask(repository: Repository, issue: Issue, score: numbe
         mentor_github_login: issue.user.login,
     } as TaskCreate;
     const apiUrl = `${process.env.API_ENDPOINT}/task/new`;
-    const res = await postData<Task[], SearchTaskReq>(apiUrl, req).then((res) => {
+    const res = await postData<Task[], TaskCreate>(apiUrl, req).then((res) => {
         return res.data
     });
     if (res != undefined) {
@@ -61,36 +61,42 @@ export async function newTask(repository: Repository, issue: Issue, score: numbe
     }
 }
 
+interface TaskUpdate {
+    github_issue_id: number,
+    score: number,
+}
+
+export async function updateTaskScore(issue: Issue, score: number) {
+    const req = {
+        github_issue_id: issue.id,
+        score: score,
+    } as TaskUpdate;
+
+    const apiUrl = `${process.env.API_ENDPOINT}/task/update-score`;
+    const res = await postData<boolean, TaskUpdate>(apiUrl, req).then((res) => {
+        return res.data
+    });
+    if (res != undefined) {
+        return true
+    } else {
+        return false
+    }
+}
+
+
 export interface CheckTaskResults {
     result: boolean,
     message: string,
-    score: number,
 }
 
 interface SearchTaskReq {
     github_repo_id: number
 }
-export async function checkTask(repo: Repository, label: Label | undefined, config: Config, maintainer: Maintainer) {
-
-    var scoreStr = label?.name.split('-')[1];
-    var score = 0;
+export async function checkTask(repo: Repository, config: Config, maintainer: Maintainer) {
     var fail_res = {
         result: false,
         message: "",
-        score: 0
     };
-
-    if (scoreStr == undefined) {
-        fail_res.message = config.comment.task.scoreUndefinedComment;
-        return fail_res
-    } else {
-        score = parseInt(scoreStr)
-    }
-
-    if (score > maintainer.maxScore || score < 2) {
-        fail_res.message = config.comment.task.scoreInvalidComment;
-        return fail_res
-    }
 
     const apiUrl = `${process.env.API_ENDPOINT}/task/search`;
     const req = {
@@ -109,6 +115,5 @@ export async function checkTask(repo: Repository, label: Label | undefined, conf
     return {
         result: true,
         message: "",
-        score: score
     }
 }

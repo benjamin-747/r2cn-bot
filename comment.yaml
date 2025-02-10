@@ -7,8 +7,10 @@ project:
 task:
   success: >
     任务创建成功。
+  successUpdate: >
+    任务更新成功，当前分值为
   notAllowedModify: >
-    创建任务后无法修改分值等信息，如需修改，请先使用 /intern-close 命令关闭追踪后，再选择新的标签。
+    任务完成后无法修改分值等信息。
   taskNotFound: >
     任务还未创建，需要使用“R2CN-分值”标签先创建任务。
   scoreUndefinedComment: >
@@ -25,6 +27,10 @@ command:
     操作失败，您当前没有权限修改该任务。
   invalidTaskState: >
     操作失败，当前任务的状态不允许进行该操作。
+  unsupportStuCommand: >
+    "不支持的命令. 当前仅支持 /request-assign, /request-complete, 和 /request-release命令。"
+  unsupportMentorCommand: >
+    "不支持的命令. 当前仅支持 /intern-disapprove, /intern-approve, /intern-fail, /intern-done 和 /intern-close命令。"
 
 requestAssign:
   success: >
