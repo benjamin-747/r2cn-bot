@@ -10,10 +10,10 @@ export default (app: Probot) => {
     app.log.info(`api endpoint: ${process.env.API_ENDPOINT}`);
     // 删除issues.opend 事件避免重复消息
     app.on(["issues.labeled"], async (context) => {
-        const labels = context.payload.issue.labels;
-        const hasLabel = labels?.some((label) => label.name.startsWith("r2cn-"));
-        if (!hasLabel) {
-            context.log.debug("R2cn label not found, skipping message...")
+        const label = context.payload.label;
+        const labeled = label?.name.startsWith("r2cn-");
+        if (!labeled) {
+            context.log.debug("Not R2cn score label, skipping message...")
             return
         }
         const config = await fetchConfig(context);
@@ -21,6 +21,15 @@ export default (app: Probot) => {
             context.log.error("Config parsing error");
             return
         }
+
+        const multi_label: boolean = (context.payload.issue.labels ?? []).filter(label => label.name.startsWith("r2cn-")).length > 1;
+        if (multi_label) {
+            await context.octokit.issues.createComment(context.issue({
+                body: config.comment.task.multiScoreLabel,
+            }));
+            return
+        }
+
         const repo_full_name = context.payload.repository.full_name;
         const repo = config.r2cn?.repos.find((repo) => repo.name === repo_full_name);
         if (!repo) {
@@ -39,7 +48,7 @@ export default (app: Probot) => {
         }
         const task = await Task.getTask(context.payload.issue.id);
         if (task == null) {
-            const checkRes: Task.CheckTaskResults = await Task.checkTask(context.payload.repository, context.payload.issue, config, maintainer);
+            const checkRes: Task.CheckTaskResults = await Task.checkTask(context.payload.repository, label, config, maintainer);
             if (checkRes.result) {
                 const newTaskRes = await Task.newTask(context.payload.repository, context.payload.issue, checkRes.score);
                 if (newTaskRes) {

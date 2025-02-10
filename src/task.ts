@@ -1,4 +1,4 @@
-import { Issue, Repository } from "@octokit/webhooks-types";
+import { Issue, Label, Repository } from "@octokit/webhooks-types";
 import { Maintainer, Config, fetchData, postData } from "./common.js";
 
 export interface Task {
@@ -70,9 +70,8 @@ export interface CheckTaskResults {
 interface SearchTaskReq {
     github_repo_id: number
 }
-export async function checkTask(repo: Repository, issue: Issue, config: Config, maintainer: Maintainer) {
+export async function checkTask(repo: Repository, label: Label | undefined, config: Config, maintainer: Maintainer) {
 
-    const label = issue.labels?.find(label => label.name.startsWith("r2cn"));
     var scoreStr = label?.name.split('-')[1];
     var score = 0;
     var fail_res = {

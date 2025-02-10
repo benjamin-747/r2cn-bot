@@ -45,6 +45,7 @@ interface TaskComment {
     notAllowedModify: string,
     taskNotFound: string,
     scoreUndefinedComment: string,
+    multiScoreLabel: string,
     scoreInvalidComment: string,
     userToomanyTask: string,
 }
