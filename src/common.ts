@@ -42,9 +42,11 @@ interface ProjectComment {
 
 interface TaskComment {
     success: string,
+    successUpdate: string,
     notAllowedModify: string,
     taskNotFound: string,
     scoreUndefinedComment: string,
+    multiScoreLabel: string,
     scoreInvalidComment: string,
     userToomanyTask: string,
 }
@@ -52,6 +54,8 @@ interface TaskComment {
 interface CommandComment {
     noPermission: string,
     invalidTaskState: string,
+    unsupportStuCommand: string,
+    unsupportMentorCommand: string,
 }
 
 interface RequestAssign {

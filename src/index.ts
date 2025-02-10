@@ -10,10 +10,10 @@ export default (app: Probot) => {
     app.log.info(`api endpoint: ${process.env.API_ENDPOINT}`);
     // 删除issues.opend 事件避免重复消息
     app.on(["issues.labeled"], async (context) => {
-        const labels = context.payload.issue.labels;
-        const hasLabel = labels?.some((label) => label.name.startsWith("r2cn-"));
-        if (!hasLabel) {
-            context.log.debug("R2cn label not found, skipping message...")
+        const label = context.payload.label;
+        const labeled = label?.name.startsWith("r2cn-");
+        if (!labeled) {
+            context.log.debug("Not R2cn score label, skipping message...")
             return
         }
         const config = await fetchConfig(context);
@@ -21,6 +21,15 @@ export default (app: Probot) => {
             context.log.error("Config parsing error");
             return
         }
+
+        const multi_label: boolean = (context.payload.issue.labels ?? []).filter(label => label.name.startsWith("r2cn-")).length > 1;
+        if (multi_label) {
+            await context.octokit.issues.createComment(context.issue({
+                body: config.comment.task.multiScoreLabel,
+            }));
+            return
+        }
+
         const repo_full_name = context.payload.repository.full_name;
         const repo = config.r2cn?.repos.find((repo) => repo.name === repo_full_name);
         if (!repo) {
@@ -37,11 +46,30 @@ export default (app: Probot) => {
             }));
             return
         }
+
+        var scoreStr = label?.name.split('-')[1];
+        var score = 0;
+        if (scoreStr == undefined) {
+            await context.octokit.issues.createComment(context.issue({
+                body: config.comment.task.scoreUndefinedComment,
+            }));
+            return
+        } else {
+            score = parseInt(scoreStr)
+        }
+
+        if (score > maintainer.maxScore || score < 2) {
+            await context.octokit.issues.createComment(context.issue({
+                body: config.comment.task.scoreInvalidComment,
+            }));
+            return
+        }
+
         const task = await Task.getTask(context.payload.issue.id);
         if (task == null) {
-            const checkRes: Task.CheckTaskResults = await Task.checkTask(context.payload.repository, context.payload.issue, config, maintainer);
+            const checkRes: Task.CheckTaskResults = await Task.checkTask(context.payload.repository, config, maintainer);
             if (checkRes.result) {
-                const newTaskRes = await Task.newTask(context.payload.repository, context.payload.issue, checkRes.score);
+                const newTaskRes = await Task.newTask(context.payload.repository, context.payload.issue, score);
                 if (newTaskRes) {
                     await context.octokit.issues.createComment(context.issue({
                         body: config.comment.task.success
@@ -53,12 +81,17 @@ export default (app: Probot) => {
                 }));
             }
         } else {
-            if (context.payload.action === "labeled") {
+            if (task.task_status == Task.TaskStatus.Finished) {
                 await context.octokit.issues.createComment(context.issue({
                     body: config.comment.task.notAllowedModify
                 }));
             } else {
-                context.log.debug("Task Exist, skipping message...")
+                // Update Task Score
+                await Task.updateTaskScore(context.payload.issue, score);
+                await context.octokit.issues.createComment(context.issue({
+                    body: config.comment.task.successUpdate + score
+                }));
+
             }
         }
     });
@@ -95,7 +128,7 @@ export default (app: Probot) => {
                 }));
             } else {
                 context.octokit.issues.createComment(context.issue({
-                    body: "Unsupported command"
+                    body: "错误的命令"
                 }));
             }
         } else {
@@ -107,7 +140,7 @@ export default (app: Probot) => {
 
 async function fetchConfig(context: Context) {
     const r2cn_conf = await context.octokit.repos.getContent({
-        owner: "r2cn-dev",
+        owner: "benjamin-747",
         repo: "r2cn",
         path: "r2cn.yaml",
     });
@@ -121,7 +154,7 @@ async function fetchConfig(context: Context) {
     }
 
     const comment_conf = await context.octokit.repos.getContent({
-        owner: "r2cn-dev",
+        owner: "benjamin-747",
         repo: "r2cn-bot",
         path: "comment.yaml",
     });

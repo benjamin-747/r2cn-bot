@@ -7,14 +7,18 @@ project:
 task:
   success: >
     任务创建成功。
+  successUpdate: >
+    任务更新成功，当前分值为
   notAllowedModify: >
-    创建任务后无法修改分值等信息，如需修改，请先使用 /intern-close 命令关闭追踪后，再选择新的标签。
+    任务完成后无法修改分值等信息。
   taskNotFound: >
     任务还未创建，需要使用“R2CN-分值”标签先创建任务。
   scoreUndefinedComment: >
     请使用“R2CN-分值”标签来创建任务，当前标签的分值不正确。
   scoreInvalidComment: >
     R2CN-分值超出组织管理员配置的上限，或者分值小于2。
+  multiScoreLabel: >
+    只能拥有一个分值标签，请先移除所有r2cn-分数标签，然后再选择1个r2cn-分数标签来新建任务。  
   userToomanyTask: >
     当前激活的任务数量超过组织管理员配置的上限，请检查任务数量或者联系管理员修改上限。
 
@@ -23,6 +27,10 @@ command:
     操作失败，您当前没有权限修改该任务。
   invalidTaskState: >
     操作失败，当前任务的状态不允许进行该操作。
+  unsupportStuCommand: >
+    "不支持的命令. 当前仅支持 /request-assign, /request-complete, 和 /request-release命令。"
+  unsupportMentorCommand: >
+    "不支持的命令. 当前仅支持 /intern-disapprove, /intern-approve, /intern-fail, /intern-done 和 /intern-close命令。"
 
 requestAssign:
   success: >

@@ -101,7 +101,7 @@ export async function handle_stu_cmd(config: Config, payload: Payload) {
             return setResponse(config.comment.requestRelease.success, true);
 
         default:
-            return setResponse("Unsupported command. Currently, only /request-assign, /request-complete, and /request-release are supported.");
+            return setResponse(config.comment.command.unsupportStuCommand);
     }
 }
 
