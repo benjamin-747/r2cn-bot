@@ -115,13 +115,15 @@ export default (app: Probot) => {
                 }));
             }
             if (command.startsWith("/request")) {
-                let res = await Student.handle_stu_cmd(config, { student: context.payload.comment.user, command, task });
+                let res = await Student.handle_stu_cmd(context, config, {
+                    user: context.payload.comment.user, command, issue: context.payload.issue, task
+                });
                 context.octokit.issues.createComment(context.issue({
                     body: res.message
                 }));
             } else if (command.startsWith("/intern")) {
                 let res = await handle_mentor_cmd(context, config, {
-                    mentor: context.payload.comment.user, command, issue: context.payload.issue, task
+                    user: context.payload.comment.user, command, issue: context.payload.issue, task
                 });
                 context.octokit.issues.createComment(context.issue({
                     body: res.message
@@ -140,7 +142,7 @@ export default (app: Probot) => {
 
 async function fetchConfig(context: Context) {
     const r2cn_conf = await context.octokit.repos.getContent({
-        owner: "benjamin-747",
+        owner: "r2cn-dev",
         repo: "r2cn",
         path: "r2cn.yaml",
     });
@@ -154,7 +156,7 @@ async function fetchConfig(context: Context) {
     }
 
     const comment_conf = await context.octokit.repos.getContent({
-        owner: "benjamin-747",
+        owner: "r2cn-dev",
         repo: "r2cn-bot",
         path: "comment.yaml",
     });

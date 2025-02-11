@@ -2,20 +2,15 @@
 import { User } from "@octokit/webhooks-types";
 import { CommandRequest, Config, postData } from "./common.js";
 import { Task, TaskStatus } from "./task.js";
+import { Context } from "probot";
+import { Payload } from "./mentor.js";
 
-
-interface Payload {
-    student: User,
-    command: string,
-    task: Task
-}
-
-export async function handle_stu_cmd(config: Config, payload: Payload) {
+export async function handle_stu_cmd(context: Context, config: Config, payload: Payload) {
     var command_res = {
         result: false,
         message: "",
     };
-    const { student, command, task } = payload;
+    const { user, command, task } = payload;
 
     const setResponse = (message: string, result: boolean = false) => {
         command_res.message = message;
@@ -29,8 +24,8 @@ export async function handle_stu_cmd(config: Config, payload: Payload) {
 
     const req = {
         github_issue_id: task.github_issue_id,
-        login: student.login,
-        github_id: student.id
+        login: user.login,
+        github_id: user.id
     };
 
     switch (command) {
@@ -43,23 +38,23 @@ export async function handle_stu_cmd(config: Config, payload: Payload) {
                 return setResponse(config.comment.command.invalidTaskState);
             }
 
-            const verify = await verifyStudentIdentity(student.login);
+            const verify = await verifyStudentIdentity(user.login);
             if (!verify.success) {
                 return setResponse(config.comment.requestAssign.waitingInfoReview);
             }
 
-            if (task.student_github_login === student.login) {
+            if (task.student_github_login === user.login) {
                 return setResponse(config.comment.requestAssign.alreadyClaim);
             }
 
-            if (!await verifyStudentTask(student.login)) {
+            if (!await verifyStudentTask(user.login)) {
                 return setResponse(config.comment.requestAssign.existTask);
             }
 
             if (await requestAssign({
                 github_issue_id: task.github_issue_id,
-                login: student.login,
-                github_id: student.id,
+                login: user.login,
+                github_id: user.id,
                 student_name: verify.student_name,
             })) {
                 return setResponse(config.comment.requestAssign.success, true);
@@ -71,7 +66,7 @@ export async function handle_stu_cmd(config: Config, payload: Payload) {
                 return setResponse(config.comment.command.invalidTaskState);
             }
 
-            if (!isStudentAuthorized(task, student)) {
+            if (!isStudentAuthorized(task, user)) {
                 return setResponse(config.comment.command.noPermission);
             }
 
@@ -93,11 +88,11 @@ export async function handle_stu_cmd(config: Config, payload: Payload) {
                 return setResponse(config.comment.command.invalidTaskState);
             }
 
-            if (!isStudentAuthorized(task, student)) {
+            if (!isStudentAuthorized(task, user)) {
                 return setResponse(config.comment.command.noPermission);
             }
 
-            await releaseTask(req)
+            await releaseTask(req, context, payload)
             return setResponse(config.comment.requestRelease.success, true);
 
         default:
@@ -145,7 +140,17 @@ async function requestAssign(req: CommandRequest) {
     return res
 }
 
-export async function releaseTask(req: CommandRequest) {
+export async function releaseTask(req: CommandRequest, context: Context, payload: Payload) {
+    const { task, issue } = payload;
+    const existingLabels = issue.labels?.some(label => label.name === "已认领");
+    if (existingLabels) {
+        await context.octokit.issues.removeLabel({
+            owner: task.owner,
+            repo: task.repo,
+            issue_number: task.github_issue_number,
+            name: "已认领",
+        });
+    }
     const apiUrl = `${process.env.API_ENDPOINT}/task/release`;
     const res = await postData<boolean, CommandRequest>(apiUrl, req).then((res) => {
         return res.data
