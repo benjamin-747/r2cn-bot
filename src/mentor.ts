@@ -4,8 +4,8 @@ import { Task, TaskStatus } from "./task.js";
 import { releaseTask } from "./student.js";
 import { Context } from "probot";
 
-interface Payload {
-    mentor: User,
+export interface Payload {
+    user: User,
     command: string,
     issue: Issue,
     task: Task
@@ -16,7 +16,7 @@ export async function handle_mentor_cmd(context: Context, config: Config, payloa
         result: false,
         message: "",
     };
-    const { mentor, command, task } = payload;
+    const { user, command, task } = payload;
     const setResponse = (message: string, result: boolean = false) => {
         command_res.message = message;
         command_res.result = result;
@@ -27,21 +27,21 @@ export async function handle_mentor_cmd(context: Context, config: Config, payloa
         return task.mentor_github_login === mentor.login;
     };
 
-    if (!isMentorAuthorized(task, mentor)) {
+    if (!isMentorAuthorized(task, user)) {
         return setResponse(config.comment.command.noPermission);
     }
 
     const req = {
         github_issue_id: task.github_issue_id,
-        login: mentor.login,
-        github_id: mentor.id
+        login: user.login,
+        github_id: user.id
     };
     switch (command) {
         case "/intern-disapprove":
             if (task.task_status !== TaskStatus.RequestAssign) {
                 return setResponse(config.comment.command.invalidTaskState);
             }
-            await releaseTask(req);
+            await releaseTask(req, context, payload);
             return setResponse(config.comment.internDisapprove.success, true);
 
         case "/intern-approve":
@@ -49,13 +49,20 @@ export async function handle_mentor_cmd(context: Context, config: Config, payloa
                 return setResponse(config.comment.command.invalidTaskState);
             }
             await internApprove(req);
+            await context.octokit.issues.addLabels({
+                owner: task.owner,
+                repo: task.repo,
+                issue_number: task.github_issue_number,
+                labels: ["已认领"],
+            });
             return setResponse(config.comment.internApprove.success, true);
 
         case "/intern-fail":
             if (task.task_status !== TaskStatus.Assigned) {
                 return setResponse(config.comment.command.invalidTaskState);
             }
-            await releaseTask(req);
+            await releaseTask(req, context, payload);
+
             return setResponse(config.comment.internFail.success, true);
         case "/intern-done":
             if (task.task_status !== TaskStatus.RequestFinish) {
