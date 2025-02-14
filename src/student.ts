@@ -25,7 +25,6 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
     const req = {
         github_issue_id: task.github_issue_id,
         login: user.login,
-        github_id: user.id
     };
 
     switch (command) {
@@ -38,10 +37,16 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
                 return setResponse(config.comment.command.invalidTaskState);
             }
 
+            // 学生身份校验
             const verify = await verifyStudentIdentity(user.login);
             if (!verify.success) {
                 return setResponse(config.comment.requestAssign.waitingInfoReview);
             }
+
+            // 合同签署校验
+            // if (!verify.contract_deadline) {
+            //     return setResponse(config.comment.requestAssign.waitingContract);
+            // }
 
             if (task.student_github_login === user.login) {
                 return setResponse(config.comment.requestAssign.alreadyClaim);
@@ -54,7 +59,6 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
             if (await requestAssign({
                 github_issue_id: task.github_issue_id,
                 login: user.login,
-                github_id: user.id,
                 student_name: verify.student_name,
             })) {
                 return setResponse(config.comment.requestAssign.success, true);
@@ -108,6 +112,7 @@ interface UserReq {
 interface VerifyStuRes {
     success: true,
     student_name?: string
+    contract_deadline?: string,
 }
 
 async function verifyStudentIdentity(login: string) {

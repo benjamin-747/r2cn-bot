@@ -89,7 +89,7 @@ export default (app: Probot) => {
                 // Update Task Score
                 await Task.updateTaskScore(context.payload.issue, score);
                 await context.octokit.issues.createComment(context.issue({
-                    body: config.comment.task.successUpdate + score
+                    body: `${config.comment.task.successUpdate.trim()}: ${score}`
                 }));
 
             }

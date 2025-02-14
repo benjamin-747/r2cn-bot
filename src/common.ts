@@ -61,6 +61,7 @@ interface CommandComment {
 interface RequestAssign {
     success: string,
     waitingInfoReview: string,
+    waitingContract: string,
     existTask: string,
     claimByOther: string,
     alreadyClaim: string,
@@ -98,7 +99,6 @@ interface InternClose {
 export interface CommandRequest {
     github_issue_id: number,
     login: string
-    github_id: number
     student_name?: string
 }
 
