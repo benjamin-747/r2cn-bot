@@ -24,7 +24,7 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
 
     const req = {
         github_issue_id: task.github_issue_id,
-        login: user.login,
+        student_login: user.login,
     };
 
     switch (command) {
@@ -58,8 +58,7 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
 
             if (await requestAssign({
                 github_issue_id: task.github_issue_id,
-                login: user.login,
-                student_name: verify.student_name,
+                student_login: user.login,
             })) {
                 return setResponse(config.comment.requestAssign.success, true);
             } else {

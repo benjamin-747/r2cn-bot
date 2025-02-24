@@ -33,7 +33,6 @@ export async function handle_mentor_cmd(context: Context, config: Config, payloa
 
     const req = {
         github_issue_id: task.github_issue_id,
-        login: user.login,
     };
     switch (command) {
         case "/intern-disapprove":
