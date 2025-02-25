@@ -38,6 +38,8 @@ interface TaskCreate {
     github_issue_id: number,
     score: number,
     mentor_github_login: string,
+    github_issue_title: string,
+    github_issue_link: string,
 }
 
 export async function newTask(repository: Repository, issue: Issue, score: number) {
@@ -49,6 +51,8 @@ export async function newTask(repository: Repository, issue: Issue, score: numbe
         github_issue_id: issue.id,
         score: score,
         mentor_github_login: issue.user.login,
+        github_issue_title: issue.title,
+        github_issue_link: issue.html_url,
     } as TaskCreate;
     const apiUrl = `${process.env.API_ENDPOINT}/task/new`;
     const res = await postData<Task[], TaskCreate>(apiUrl, req).then((res) => {

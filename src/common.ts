@@ -98,8 +98,7 @@ interface InternClose {
 
 export interface CommandRequest {
     github_issue_id: number,
-    login: string
-    student_name?: string
+    student_login?: string
 }
 
 interface ApiResponse<T> {
