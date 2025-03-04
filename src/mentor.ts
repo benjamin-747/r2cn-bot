@@ -53,11 +53,27 @@ export async function handle_mentor_cmd(context: Context, config: Config, payloa
                 issue_number: task.github_issue_number,
                 labels: ["已认领"],
             });
+            if (task.student_github_login) {
+                await context.octokit.issues.addAssignees({
+                    owner: task.owner,
+                    repo: task.repo,
+                    issue_number: task.github_issue_number,
+                    assignees: [task.student_github_login],
+                });
+            }
             return setResponse(config.comment.internApprove.success, true);
 
         case "/intern-fail":
             if (task.task_status !== TaskStatus.Assigned) {
                 return setResponse(config.comment.command.invalidTaskState);
+            }
+            if (task.student_github_login) { 
+                await context.octokit.issues.removeAssignees({
+                    owner: task.owner,
+                    repo: task.repo,
+                    issue_number: task.github_issue_number,
+                    assignees: [task.student_github_login],
+                });
             }
             await releaseTask(req, context, payload);
 
