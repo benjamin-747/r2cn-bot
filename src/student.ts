@@ -155,6 +155,14 @@ export async function releaseTask(req: CommandRequest, context: Context, payload
             name: "已认领",
         });
     }
+    if (task.student_github_login) { 
+        await context.octokit.issues.removeAssignees({
+            owner: task.owner,
+            repo: task.repo,
+            issue_number: task.github_issue_number,
+            assignees: [task.student_github_login],
+        });
+    }
     const apiUrl = `${process.env.API_ENDPOINT}/task/release`;
     const res = await postData<boolean, CommandRequest>(apiUrl, req).then((res) => {
         return res.data
