@@ -155,10 +155,15 @@ async function fetchConfig(context: Context) {
         context.log.error("Parsing r2cn.yaml failed.");
     }
 
+    const repo = context.repo();
+    const repo_full_name = `${repo.owner}/${repo.repo}`;
+    const useEnglish = repo_full_name === "rustfs/rustfs";
+    const comment_file = useEnglish ? "comment.en.yaml" : "comment.zh.yaml";
+
     const comment_conf = await context.octokit.repos.getContent({
         owner: "r2cn-dev",
         repo: "r2cn-bot",
-        path: "comment.yaml",
+        path: comment_file,
     });
     let comment: BotComment | null = null;
 
@@ -166,7 +171,7 @@ async function fetchConfig(context: Context) {
         const content = Buffer.from(comment_conf.data.content || "", "base64").toString("utf8");
         comment = yaml.load(content) as BotComment;
     } else {
-        context.log.error("Parsing comment.yaml failed.");
+        context.log.error(`Parsing ${comment_file} failed.`);
     }
     // 检查是否成功解析
     if (r2cn && comment) {

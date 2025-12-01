@@ -1,0 +1,77 @@
+project:
+  noneProjectComment: >
+    Welcome to the R2CN project! Before getting started, you need to submit a PR first. For details, please refer to the documentation at https://r2cn.dev/docs/project/signup
+  noneMaintainerComment: >
+    You currently do not have permission to create R2CN tasks. Please contact your repository or organization administrator to submit a PR to add your GitHub ID to the r2cn.yaml file. For reference, see https://r2cn.dev/docs/project/mentor-and-tasks/mentor.
+
+task:
+  success: >
+    Task created successfully.
+  successUpdate: >
+    Task updated successfully. Current score is
+  notAllowedModify: >
+    Task score and other information cannot be modified after the task is completed.
+  taskNotFound: >
+    The task has not been created yet. Please use the "R2CN-score" label to create a task first.
+  scoreUndefinedComment: >
+    Please use the "R2CN-score" label to create a task. The score in the current label is incorrect.
+  scoreInvalidComment: >
+    The R2CN score exceeds the limit configured by the organization administrator, or the score is less than 2.
+  multiScoreLabel: >
+    Only one score label is allowed. Please remove all r2cn-score labels first, then select one r2cn-score label to create a new task.
+  userToomanyTask: >
+    The number of currently active tasks exceeds the limit configured by the organization administrator. Please check the number of tasks or contact the administrator to modify the limit.
+
+command:
+  noPermission: >
+    Operation failed: You currently do not have permission to modify this task.
+  invalidTaskState: >
+    Operation failed: The current task state does not allow this operation.
+  unsupportStuCommand: >
+    Unsupported command: Currently only /request-assign, /request-complete, and /request-release commands are supported.
+  unsupportMentorCommand: >
+    Unsupported command: Currently only /intern-disapprove, /intern-approve, /intern-fail, /intern-done, and /intern-close commands are supported.
+
+requestAssign:
+  success: >
+    Claim successful: Waiting for mentor review. Please contact your mentor for review in a timely manner.
+  waitingInfoReview: >
+    Claim failed: Please register as a student at https://summer-ospp.ac.cn/r2cnLogin and pass the review before claiming tasks.
+  waitingContract: >
+    Claim failed: Contract not signed. If you have confirmed signing, please contact the administrator in the R2CN Discord (https://discord.gg/WRp4TKv6rh) #signup-student channel to update the contract signing status.
+  existTask: >
+    Claim failed: You already have a task in progress.
+  claimByOther: >
+    Claim failed: Another student has already applied for this task. Please choose another task.
+  alreadyClaim: >
+    Claim failed: This task has already been claimed by you. Please do not claim it again!
+
+internDisapprove:
+  success: >
+    Rejection successful: Task has been released to open status.
+
+internApprove:
+  success: >
+    Claim approval successful: The task has been assigned to the student.
+
+requestComplete:
+  success: >
+    Completion request successful: Waiting for mentor to review the completion.
+  noRelatedPR: >
+    Completion request failed: At least one related PR is required.
+
+requestRelease:
+  success: >
+    Release request successful: The task is now open again.
+
+internFail:
+  success: >
+    Student task failed: The task is now open again.
+
+internDone:
+  success: >
+    Operation successful: Task closed and points awarded to the student.
+
+internClose:
+  success: >
+    Operation successful: Task closed and no longer tracked.
