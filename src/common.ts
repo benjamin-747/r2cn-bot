@@ -96,6 +96,11 @@ interface InternClose {
     success: string
 }
 
+export const getClaimedLabelName = (owner: string, repo: string) => {
+    const repoFullName = `${owner}/${repo}`;
+    return repoFullName === "rustfs/rustfs" ? "claimed" : "已认领";
+};
+
 export interface CommandRequest {
     github_issue_id: number,
     student_login?: string
