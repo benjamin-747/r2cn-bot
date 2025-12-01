@@ -1,5 +1,5 @@
 import { Issue, User } from "@octokit/webhooks-types";
-import { CommandRequest, Config, postData } from "./common.js";
+import { CommandRequest, Config, getClaimedLabelName, postData } from "./common.js";
 import { Task, TaskStatus } from "./task.js";
 import { releaseTask } from "./student.js";
 import { Context } from "probot";
@@ -47,11 +47,12 @@ export async function handle_mentor_cmd(context: Context, config: Config, payloa
                 return setResponse(config.comment.command.invalidTaskState);
             }
             await internApprove(req);
+            const claimedLabel = getClaimedLabelName(task.owner, task.repo);
             await context.octokit.issues.addLabels({
                 owner: task.owner,
                 repo: task.repo,
                 issue_number: task.github_issue_number,
-                labels: ["已认领"],
+                labels: [claimedLabel],
             });
             if (task.student_github_login) {
                 await context.octokit.issues.addAssignees({
@@ -87,6 +88,12 @@ export async function handle_mentor_cmd(context: Context, config: Config, payloa
                 repo: task.repo,
                 issue_number: task.github_issue_number,
                 state: "closed",
+            });
+            await context.octokit.issues.addLabels({
+                owner: task.owner,
+                repo: task.repo,
+                issue_number: task.github_issue_number,
+                labels: ["r2cn-complete"],
             });
             await internDone(req);
             return setResponse(config.comment.internDone.success, true);

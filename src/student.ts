@@ -1,6 +1,6 @@
 
 import { User } from "@octokit/webhooks-types";
-import { CommandRequest, Config, postData } from "./common.js";
+import { CommandRequest, Config, getClaimedLabelName, postData } from "./common.js";
 import { Task, TaskStatus } from "./task.js";
 import { Context } from "probot";
 import { Payload } from "./mentor.js";
@@ -146,13 +146,14 @@ async function requestAssign(req: CommandRequest) {
 
 export async function releaseTask(req: CommandRequest, context: Context, payload: Payload) {
     const { task, issue } = payload;
-    const existingLabels = issue.labels?.some(label => label.name === "已认领");
+    const claimedLabel = getClaimedLabelName(task.owner, task.repo);
+    const existingLabels = issue.labels?.some(label => label.name === claimedLabel);
     if (existingLabels) {
         await context.octokit.issues.removeLabel({
             owner: task.owner,
             repo: task.repo,
             issue_number: task.github_issue_number,
-            name: "已认领",
+            name: claimedLabel,
         });
     }
     if (task.student_github_login) { 
