@@ -1,4 +1,4 @@
-import { Maintainer, Config, fetchData, postData } from "../config/index.js";
+import { Maintainer, Config, fetchData, isBackendApiError, postData } from "../config/index.js";
 import type { ScmProvider } from "../canonical/scm-provider.js";
 import type { Actor, IssueRef, RepoRef } from "../canonical/refs.js";
 import type { ScmBackendRequestFields } from "../api/scm-backend-payload.js";
@@ -42,7 +42,7 @@ export async function getTaskLookup(issue_id: number, provider: ScmProvider): Pr
     const url = `${base}?${new URLSearchParams({ scm_provider: provider }).toString()}`;
     const apiRes = await fetchData<Task>(url);
     const res = apiRes.data;
-    const apiError = res == null && apiRes.message !== "success";
+    const apiError = isBackendApiError(apiRes);
     console.info("[task/getTask] result", {
         issue_id,
         provider,
@@ -117,7 +117,7 @@ export async function newTask(
     };
     const apiUrl = `${process.env.API_ENDPOINT}/task/new`;
     const apiRes = await postData<Task[], typeof req>(apiUrl, req);
-    const apiError = apiRes.data == null && apiRes.message !== "success";
+    const apiError = isBackendApiError(apiRes);
     return {
         ok: apiRes.data != null,
         apiError,
@@ -141,7 +141,7 @@ export async function updateTaskScore(issue: IssueRef, score: number, provider: 
 
     const apiUrl = `${process.env.API_ENDPOINT}/task/update-score`;
     const apiRes = await postData<boolean, typeof req>(apiUrl, req);
-    const apiError = apiRes.data == null && apiRes.message !== "success";
+    const apiError = isBackendApiError(apiRes);
     return {
         ok: apiRes.data != null,
         apiError,
@@ -179,7 +179,7 @@ export async function checkTask(
         }),
     }
     const apiRes = await postData<Task[], typeof req>(apiUrl, req);
-    const apiError = apiRes.data == null && apiRes.message !== "success";
+    const apiError = isBackendApiError(apiRes);
     if (apiError) {
         console.warn("[task/search] api error", {
             repo_id: repoId,
