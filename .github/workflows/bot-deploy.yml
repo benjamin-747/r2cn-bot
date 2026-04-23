@@ -1,4 +1,4 @@
-name: R2CN Bot deploy
+name: Openatom Internship Bot deploy
 on:
   push:
     branches:
@@ -15,6 +15,23 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit tests
+        run: pnpm exec vitest run
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -33,32 +50,37 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
           REGISTRY_ALIAS: m8q5m4u3
-          REPOSITORY: r2cn
-          IMAGE_TAG: bot-0.1.0-pre-release
+          REPOSITORY: openatom-internship/bot
         run: |
 
           IMAGE_BASE="$REGISTRY/$REGISTRY_ALIAS/$REPOSITORY"
+          SHA_TAG="${GITHUB_SHA}"
 
           docker buildx build \
-          -t $IMAGE_BASE:$IMAGE_TAG \
+          -t "$IMAGE_BASE:latest" \
+          -t "$IMAGE_BASE:$SHA_TAG" \
           --push .
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            docker pull public.ecr.aws/m8q5m4u3/r2cn:bot-0.1.0-pre-release &&
-            docker rm -f r2cn-bot || true &&
-            docker run -it -d --name r2cn-bot --network r2cn-network \
-            -e APP_ID=${{ secrets.APP_ID}} \
-            -e PRIVATE_KEY=${{secrets.PRIVATE_KEY}} \
-            -e WEBHOOK_SECRET=${{secrets.WEBHOOK_SECRET}} \
-            -e GITHUB_CLIENT_ID=${{secrets.APP_CLIENT_ID}} \
-            -e GITHUB_CLIENT_SECRET=${{secrets.APP_CLIENT_SECRET}} \
-            -e API_ENDPOINT=http://r2cn-api:8000/api/v1 \
-            -p 3000:3000 --restart=always \
-            public.ecr.aws/m8q5m4u3/r2cn:bot-0.1.0-pre-release
+      # - name: Deploy via SSH
+      #   uses: appleboy/ssh-action@v1.0.3
+      #   with:
+      #     host: ${{ secrets.SSH_HOST }}
+      #     username: ${{ secrets.SSH_USER }}
+      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
+      #     port: ${{ secrets.SSH_PORT }}
+      #     script: |
+      #       docker pull public.ecr.aws/m8q5m4u3/r2cn/bot:latest &&
+      #       docker rm -f r2cn-bot || true &&
+      #       docker run -it -d --name r2cn-bot --network r2cn-network \
+      #       -e APP_ID=${{ secrets.APP_ID}} \
+      #       -e PRIVATE_KEY=${{secrets.PRIVATE_KEY}} \
+      #       -e WEBHOOK_SECRET=${{secrets.WEBHOOK_SECRET}} \
+      #       -e GITHUB_CLIENT_ID=${{secrets.APP_CLIENT_ID}} \
+      #       -e GITHUB_CLIENT_SECRET=${{secrets.APP_CLIENT_SECRET}} \
+      #       -e API_ENDPOINT=http://r2cn-api:8000/api/v1 \
+      #       -p 3000:3000 --restart=always \
+      #       public.ecr.aws/m8q5m4u3/r2cn/bot:latest
+      #       # Atomgit (when enabled): add GitHub repo secrets and uncomment, e.g.
+      #       # -e ATOMGIT_WEBHOOK_SECRET=${{ secrets.ATOMGIT_WEBHOOK_SECRET }} \
+      #       # -e ATOMGIT_API_BASE=${{ secrets.ATOMGIT_API_BASE }} \
+      #       # -e ATOMGIT_TOKEN=${{ secrets.ATOMGIT_TOKEN }} \

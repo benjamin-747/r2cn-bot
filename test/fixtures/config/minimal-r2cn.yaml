@@ -1,0 +1,6 @@
+repos:
+  - name: o/r
+    maintainers:
+      - id: bob
+        task: 5
+        maxScore: 10

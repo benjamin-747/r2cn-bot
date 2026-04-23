@@ -1,0 +1,21 @@
+{
+  "object_kind": "note",
+  "object_attributes": {
+    "note": "hello",
+    "noteable_type": "Issue",
+    "noteable_id": 9
+  },
+  "project": {
+    "id": 42,
+    "path_with_namespace": "mygroup/myproject"
+  },
+  "issue": {
+    "id": 100,
+    "iid": 3,
+    "title": "T",
+    "web_url": "https://example.com/i/3",
+    "labels": [{ "title": "a" }],
+    "author": { "username": "author", "id": 1 }
+  },
+  "user": { "username": "commenter", "id": 2 }
+}

@@ -1,0 +1,23 @@
+{
+  "action": "labeled",
+  "label": {
+    "name": "bug"
+  },
+  "issue": {
+    "id": 42,
+    "number": 1,
+    "user": { "login": "hiimbex" },
+    "labels": [{ "name": "bug" }],
+    "title": "Test issue",
+    "html_url": "https://github.com/hiimbex/testing-things/issues/1"
+  },
+  "repository": {
+    "id": 99,
+    "name": "testing-things",
+    "full_name": "hiimbex/testing-things",
+    "owner": { "login": "hiimbex" }
+  },
+  "installation": {
+    "id": 2
+  }
+}

@@ -1,0 +1,39 @@
+project:
+  noneProjectComment: "np"
+  noneMaintainerComment: "nm"
+task:
+  success: "s"
+  successUpdate: "su"
+  notAllowedModify: "na"
+  taskNotFound: "tnf"
+  scoreUndefinedComment: "su"
+  multiScoreLabel: "ml"
+  scoreInvalidComment: "si"
+  userToomanyTask: "um"
+command:
+  noPermission: "np"
+  invalidTaskState: "iv"
+  unsupportStuCommand: "usc"
+  unsupportMentorCommand: "umc"
+requestAssign:
+  success: "ra"
+  waitingInfoReview: "wir"
+  waitingContract: "wc"
+  existTask: "et"
+  claimByOther: "cbo"
+  alreadyClaim: "ac"
+internDisapprove:
+  success: "id"
+internApprove:
+  success: "ia"
+requestComplete:
+  success: "rc"
+  noRelatedPR: "nr"
+requestRelease:
+  success: "rr"
+internFail:
+  success: "if"
+internDone:
+  success: "idone"
+internClose:
+  success: "ic"
