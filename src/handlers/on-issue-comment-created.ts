@@ -47,8 +47,30 @@ export async function onIssueCommentCreated(
         return;
     }
 
-    const task = await Task.getTask(event.issue.id, event.repo.provider);
+    const taskLookup = await Task.getTaskLookup(event.issue.id, event.repo.provider);
+    const task = taskLookup.task;
     if (task == null) {
+        if (taskLookup.apiError) {
+            log.warn(
+                {
+                    handlerDecision: "task_lookup_api_error",
+                    repoFullName: event.repo.fullName,
+                    issueNumber: event.issue.number,
+                    issueInternalId: event.issue.id,
+                    apiMessage: taskLookup.message,
+                    commandPreview: command.slice(0, 80),
+                },
+                "onIssueCommentCreated: task lookup API failed; posting apiUnavailable",
+            );
+            await scm.createIssueComment({
+                owner,
+                repo: repoName,
+                issueNumber,
+                body: config.comment.task.apiUnavailable,
+                ...p,
+            });
+            return;
+        }
         log.info(
             {
                 handlerDecision: "task_not_found_will_still_evaluate_command",
@@ -66,6 +88,18 @@ export async function onIssueCommentCreated(
             body: config.comment.task.taskNotFound,
             ...p,
         });
+        if (command.startsWith("/request")) {
+            log.info(
+                {
+                    handlerDecision: "task_not_found_return_after_comment",
+                    repoFullName: event.repo.fullName,
+                    issueNumber: event.issue.number,
+                    commandPreview: command.slice(0, 80),
+                },
+                "onIssueCommentCreated: task missing for /request*; return after taskNotFound comment",
+            );
+            return;
+        }
     }
 
     if (command.startsWith("/request")) {
@@ -86,6 +120,16 @@ export async function onIssueCommentCreated(
             task,
             scmProvider: event.repo.provider,
         });
+        if (res.apiError) {
+            await scm.createIssueComment({
+                owner,
+                repo: repoName,
+                issueNumber,
+                body: config.comment.task.apiUnavailable,
+                ...p,
+            });
+            return;
+        }
         await scm.createIssueComment({
             owner,
             repo: repoName,
@@ -111,6 +155,16 @@ export async function onIssueCommentCreated(
             task,
             scmProvider: event.repo.provider,
         });
+        if (res.apiError) {
+            await scm.createIssueComment({
+                owner,
+                repo: repoName,
+                issueNumber,
+                body: config.comment.task.apiUnavailable,
+                ...p,
+            });
+            return;
+        }
         await scm.createIssueComment({
             owner,
             repo: repoName,

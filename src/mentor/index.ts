@@ -6,6 +6,28 @@ import { releaseTask } from "../student/index.js";
 import type { ScmClient } from "../scm/types.js";
 import { scmProjectOptsFromTask } from "../handlers/scm-project-opts.js";
 import { mergeBackendWithTask } from "../api/scm-backend-payload.js";
+import type { TaskApiResult } from "../task/index.js";
+
+export type MentorCommandBusinessCode =
+    | "invalid_task_state"
+    | "no_permission"
+    | "intern_disapprove_success"
+    | "intern_approve_success"
+    | "intern_fail_success"
+    | "intern_done_success"
+    | "intern_close_success"
+    | "intern_approve_failed"
+    | "intern_done_failed"
+    | "intern_close_failed"
+    | "unsupported_mentor_command"
+    | "api_error";
+
+export interface MentorCommandResult {
+    result: boolean;
+    message: string;
+    apiError: boolean;
+    businessCode: MentorCommandBusinessCode;
+}
 
 export interface Payload {
     actor: Actor,
@@ -17,20 +39,31 @@ export interface Payload {
 }
 
 export async function handle_mentor_cmd(scm: ScmClient, config: Config, payload: Payload) {
-    var command_res = {
+    var command_res: MentorCommandResult = {
         result: false,
         message: "",
+        apiError: false,
+        businessCode: "invalid_task_state",
     };
     const { actor, command, task, scmProvider } = payload;
     if (task == null) {
         return {
             result: false,
             message: config.comment.command.invalidTaskState,
+            apiError: false,
+            businessCode: "invalid_task_state",
         };
     }
-    const setResponse = (message: string, result: boolean = false) => {
+    const setResponse = (
+        message: string,
+        businessCode: MentorCommandBusinessCode,
+        result: boolean = false,
+        apiError: boolean = false,
+    ) => {
         command_res.message = message;
         command_res.result = result;
+        command_res.businessCode = businessCode;
+        command_res.apiError = apiError;
         return command_res;
     };
 
@@ -39,7 +72,7 @@ export async function handle_mentor_cmd(scm: ScmClient, config: Config, payload:
     };
 
     if (!isMentorAuthorized(task, actor)) {
-        return setResponse(config.comment.command.noPermission);
+        return setResponse(config.comment.command.noPermission, "no_permission");
     }
 
     const req = {
@@ -49,16 +82,22 @@ export async function handle_mentor_cmd(scm: ScmClient, config: Config, payload:
     switch (command) {
         case "/intern-disapprove":
             if (task.task_status !== TaskStatus.RequestAssign) {
-                return setResponse(config.comment.command.invalidTaskState);
+                return setResponse(config.comment.command.invalidTaskState, "invalid_task_state");
             }
             await releaseTask(req, scm, payload);
-            return setResponse(config.comment.internDisapprove.success, true);
+            return setResponse(config.comment.internDisapprove.success, "intern_disapprove_success", true);
 
         case "/intern-approve":
             if (task.task_status !== TaskStatus.RequestAssign) {
-                return setResponse(config.comment.command.invalidTaskState);
+                return setResponse(config.comment.command.invalidTaskState, "invalid_task_state");
             }
-            await internApprove(req, task, scmProvider);
+            const approveRes = await internApprove(req, task, scmProvider);
+            if (approveRes.apiError) {
+                return setResponse(config.comment.task.apiUnavailable, "api_error", false, true);
+            }
+            if (!approveRes.ok) {
+                return setResponse(config.comment.command.invalidTaskState, "intern_approve_failed");
+            }
             const claimedLabel = getClaimedLabelName(task.owner, task.repo);
             await scm.addLabels({
                 owner: task.owner,
@@ -76,11 +115,11 @@ export async function handle_mentor_cmd(scm: ScmClient, config: Config, payload:
                     ...tp,
                 });
             }
-            return setResponse(config.comment.internApprove.success, true);
+            return setResponse(config.comment.internApprove.success, "intern_approve_success", true);
 
         case "/intern-fail":
             if (task.task_status !== TaskStatus.Assigned) {
-                return setResponse(config.comment.command.invalidTaskState);
+                return setResponse(config.comment.command.invalidTaskState, "invalid_task_state");
             }
             if (task.student_login) {
                 await scm.removeAssignees({
@@ -93,10 +132,10 @@ export async function handle_mentor_cmd(scm: ScmClient, config: Config, payload:
             }
             await releaseTask(req, scm, payload);
 
-            return setResponse(config.comment.internFail.success, true);
+            return setResponse(config.comment.internFail.success, "intern_fail_success", true);
         case "/intern-done":
             if (task.task_status !== TaskStatus.RequestFinish) {
-                return setResponse(config.comment.command.invalidTaskState);
+                return setResponse(config.comment.command.invalidTaskState, "invalid_task_state");
             }
             await scm.updateIssue({
                 owner: task.owner,
@@ -112,8 +151,14 @@ export async function handle_mentor_cmd(scm: ScmClient, config: Config, payload:
                 labels: ["r2cn-complete"],
                 ...tp,
             });
-            await internDone(req, task, scmProvider);
-            return setResponse(config.comment.internDone.success, true);
+            const doneRes = await internDone(req, task, scmProvider);
+            if (doneRes.apiError) {
+                return setResponse(config.comment.task.apiUnavailable, "api_error", false, true);
+            }
+            if (!doneRes.ok) {
+                return setResponse(config.comment.command.invalidTaskState, "intern_done_failed");
+            }
+            return setResponse(config.comment.internDone.success, "intern_done_success", true);
         case "/intern-close":
             await scm.removeAllLabels({
                 owner: task.owner,
@@ -121,37 +166,55 @@ export async function handle_mentor_cmd(scm: ScmClient, config: Config, payload:
                 issueNumber: task.issue_number,
                 ...tp,
             });
-            await internClose(req, task, scmProvider);
-            return setResponse(config.comment.internClose.success, true);
+            const closeRes = await internClose(req, task, scmProvider);
+            if (closeRes.apiError) {
+                return setResponse(config.comment.task.apiUnavailable, "api_error", false, true);
+            }
+            if (!closeRes.ok) {
+                return setResponse(config.comment.command.invalidTaskState, "intern_close_failed");
+            }
+            return setResponse(config.comment.internClose.success, "intern_close_success", true);
         default:
-            return setResponse(config.comment.command.unsupportMentorCommand);
+            return setResponse(config.comment.command.unsupportMentorCommand, "unsupported_mentor_command");
     }
 }
 
 
 async function internApprove(req: CommandRequest, task: Task, scmProvider: ScmProvider) {
+    const isApiError = <T>(res: { message: string; data: T | null }) =>
+        res.data == null && res.message !== "success";
     const body = mergeBackendWithTask(req, scmProvider, task);
     const apiUrl = `${process.env.API_ENDPOINT}/task/intern-approve`;
-    const res = await postData<boolean, typeof body>(apiUrl, body).then((res) => {
-        return res.data
-    });
-    return res
+    const apiRes = await postData<boolean, typeof body>(apiUrl, body);
+    return {
+        ok: apiRes.data === true,
+        apiError: isApiError(apiRes),
+        message: apiRes.message,
+    } as TaskApiResult;
 }
 
 async function internDone(req: CommandRequest, task: Task, scmProvider: ScmProvider) {
+    const isApiError = <T>(res: { message: string; data: T | null }) =>
+        res.data == null && res.message !== "success";
     const body = mergeBackendWithTask(req, scmProvider, task);
     const apiUrl = `${process.env.API_ENDPOINT}/task/intern-done`;
-    const res = await postData<boolean, typeof body>(apiUrl, body).then((res) => {
-        return res.data
-    });
-    return res
+    const apiRes = await postData<boolean, typeof body>(apiUrl, body);
+    return {
+        ok: apiRes.data === true,
+        apiError: isApiError(apiRes),
+        message: apiRes.message,
+    } as TaskApiResult;
 }
 
 async function internClose(req: CommandRequest, task: Task, scmProvider: ScmProvider) {
+    const isApiError = <T>(res: { message: string; data: T | null }) =>
+        res.data == null && res.message !== "success";
     const body = mergeBackendWithTask(req, scmProvider, task);
     const apiUrl = `${process.env.API_ENDPOINT}/task/intern-close`;
-    const res = await postData<boolean, typeof body>(apiUrl, body).then((res) => {
-        return res.data
-    });
-    return res
+    const apiRes = await postData<boolean, typeof body>(apiUrl, body);
+    return {
+        ok: apiRes.data === true,
+        apiError: isApiError(apiRes),
+        message: apiRes.message,
+    } as TaskApiResult;
 }

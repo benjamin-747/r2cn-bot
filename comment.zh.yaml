@@ -13,6 +13,8 @@ task:
     任务完成后无法修改分值等信息.
   taskNotFound: >
     任务还未创建,需要使用“R2CN-分值”标签先创建任务.
+  apiUnavailable: >
+    当前后端 API 服务不可用，请稍后重试。
   scoreUndefinedComment: >
     请使用“R2CN-分值”标签来创建任务,当前标签的分值不正确.
   scoreInvalidComment: >
