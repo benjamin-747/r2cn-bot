@@ -107,7 +107,7 @@ export interface CommandRequest {
     student_login?: string
 }
 
-interface ApiResponse<T> {
+export interface ApiResponse<T> {
     message: string;
     data: T;
 }
@@ -115,6 +115,18 @@ interface ApiResponse<T> {
 const http = axios.create({
     headers: { "Content-Type": "application/json" },
 });
+
+const NON_ERROR_MESSAGES = new Set([
+    "success",
+    "Task Not Found",
+]);
+
+export function isBackendApiError<T>(res: Pick<ApiResponse<T>, "message" | "data">): boolean {
+    if (res.data != null) {
+        return false;
+    }
+    return !NON_ERROR_MESSAGES.has(res.message);
+}
 
 function toFailedApiResponse<T>(error: unknown): ApiResponse<T> {
     if (axios.isAxiosError(error)) {

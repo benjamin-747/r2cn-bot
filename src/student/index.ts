@@ -1,5 +1,5 @@
 
-import { CommandRequest, Config, getClaimedLabelName, postData } from "../config/index.js";
+import { CommandRequest, Config, getClaimedLabelName, isBackendApiError, postData } from "../config/index.js";
 import type { Actor } from "../canonical/refs.js";
 import { Task, TaskStatus } from "../task/index.js";
 import type { Payload } from "../mentor/index.js";
@@ -177,17 +177,13 @@ interface VerifyStuRes {
     contract_deadline?: string,
 }
 
-function isApiError<T>(res: { message: string; data: T | null }): boolean {
-    return res.data == null && res.message !== "success";
-}
-
 async function verifyStudentIdentity(login: string, scmProvider: Payload["scmProvider"]) {
     const apiUrl = `${process.env.API_ENDPOINT}/student/validate`;
     const body: UserReq & ScmBackendRequestFields = mergeBackendProviderOnly({ login }, scmProvider);
     const apiRes = await postData<VerifyStuRes, typeof body>(apiUrl, body);
     return {
         data: apiRes.data ?? null,
-        apiError: isApiError(apiRes),
+        apiError: isBackendApiError(apiRes),
     };
 }
 
@@ -195,7 +191,7 @@ async function verifyStudentTask(login: string, scmProvider: Payload["scmProvide
     const apiUrl = `${process.env.API_ENDPOINT}/student/task`;
     const body: UserReq & ScmBackendRequestFields = mergeBackendProviderOnly({ login }, scmProvider);
     const apiRes = await postData<Task, typeof body>(apiUrl, body);
-    if (isApiError(apiRes)) {
+    if (isBackendApiError(apiRes)) {
         return { allow: false, apiError: true };
     }
     return { allow: apiRes.data === null, apiError: false };
@@ -209,7 +205,7 @@ async function requestAssign(req: CommandRequest, task: Task, scmProvider: Paylo
     const apiRes = await postData<boolean, typeof body>(apiUrl, body);
     return {
         ok: apiRes.data === true,
-        apiError: isApiError(apiRes),
+        apiError: isBackendApiError(apiRes),
         message: apiRes.message,
     } as TaskApiResult;
 }
@@ -249,7 +245,7 @@ export async function releaseTask(req: CommandRequest, scm: ScmClient, payload: 
     const apiRes = await postData<boolean, typeof body>(apiUrl, body);
     return {
         ok: apiRes.data === true,
-        apiError: isApiError(apiRes),
+        apiError: isBackendApiError(apiRes),
         message: apiRes.message,
     } as TaskApiResult;
 }
@@ -264,7 +260,7 @@ async function requestComplete(
     const apiRes = await postData<boolean, typeof body>(apiUrl, body);
     return {
         ok: apiRes.data === true,
-        apiError: isApiError(apiRes),
+        apiError: isBackendApiError(apiRes),
         message: apiRes.message,
     } as TaskApiResult;
 }

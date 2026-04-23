@@ -1,4 +1,4 @@
-import { CommandRequest, Config, getClaimedLabelName, postData } from "../config/index.js";
+import { CommandRequest, Config, getClaimedLabelName, isBackendApiError, postData } from "../config/index.js";
 import type { ScmProvider } from "../canonical/scm-provider.js";
 import type { Actor, IssueRef, LabelRef } from "../canonical/refs.js";
 import { Task, TaskStatus } from "../task/index.js";
@@ -181,40 +181,34 @@ export async function handle_mentor_cmd(scm: ScmClient, config: Config, payload:
 
 
 async function internApprove(req: CommandRequest, task: Task, scmProvider: ScmProvider) {
-    const isApiError = <T>(res: { message: string; data: T | null }) =>
-        res.data == null && res.message !== "success";
     const body = mergeBackendWithTask(req, scmProvider, task);
     const apiUrl = `${process.env.API_ENDPOINT}/task/intern-approve`;
     const apiRes = await postData<boolean, typeof body>(apiUrl, body);
     return {
         ok: apiRes.data === true,
-        apiError: isApiError(apiRes),
+        apiError: isBackendApiError(apiRes),
         message: apiRes.message,
     } as TaskApiResult;
 }
 
 async function internDone(req: CommandRequest, task: Task, scmProvider: ScmProvider) {
-    const isApiError = <T>(res: { message: string; data: T | null }) =>
-        res.data == null && res.message !== "success";
     const body = mergeBackendWithTask(req, scmProvider, task);
     const apiUrl = `${process.env.API_ENDPOINT}/task/intern-done`;
     const apiRes = await postData<boolean, typeof body>(apiUrl, body);
     return {
         ok: apiRes.data === true,
-        apiError: isApiError(apiRes),
+        apiError: isBackendApiError(apiRes),
         message: apiRes.message,
     } as TaskApiResult;
 }
 
 async function internClose(req: CommandRequest, task: Task, scmProvider: ScmProvider) {
-    const isApiError = <T>(res: { message: string; data: T | null }) =>
-        res.data == null && res.message !== "success";
     const body = mergeBackendWithTask(req, scmProvider, task);
     const apiUrl = `${process.env.API_ENDPOINT}/task/intern-close`;
     const apiRes = await postData<boolean, typeof body>(apiUrl, body);
     return {
         ok: apiRes.data === true,
-        apiError: isApiError(apiRes),
+        apiError: isBackendApiError(apiRes),
         message: apiRes.message,
     } as TaskApiResult;
 }
