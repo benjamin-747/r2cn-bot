@@ -64,15 +64,19 @@ describe("onIssueCommentCreated (phase 5)", () => {
             return null;
         });
 
-        vi.spyOn(Task, "getTask").mockResolvedValue({
-            repo: "r",
-            owner: "o",
-            issue_number: 5,
-            repo_id: 99,
-            issue_id: 100,
-            task_status: Task.TaskStatus.Assigned,
-            mentor_login: "m",
-            student_login: "bob",
+        vi.spyOn(Task, "getTaskLookup").mockResolvedValue({
+            task: {
+                repo: "r",
+                owner: "o",
+                issue_number: 5,
+                repo_id: 99,
+                issue_id: 100,
+                task_status: Task.TaskStatus.Assigned,
+                mentor_login: "m",
+                student_login: "bob",
+            },
+            apiError: false,
+            message: "success",
         });
 
         await onIssueCommentCreated(event!, { scm, log: noopLog });

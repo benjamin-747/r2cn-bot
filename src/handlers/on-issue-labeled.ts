@@ -160,8 +160,29 @@ export async function onIssueLabeled(
         return;
     }
 
-    const task = await Task.getTask(event.issue.id, event.repo.provider);
+    const taskLookup = await Task.getTaskLookup(event.issue.id, event.repo.provider);
+    const task = taskLookup.task;
     if (task == null) {
+        if (taskLookup.apiError) {
+            log.warn(
+                {
+                    handlerDecision: "task_lookup_api_error_reply_api_unavailable",
+                    repoFullName,
+                    issueNumber,
+                    issueInternalId: event.issue.id,
+                    apiMessage: taskLookup.message,
+                },
+                "onIssueLabeled: task lookup API failed → apiUnavailable",
+            );
+            await scm.createIssueComment({
+                owner,
+                repo: repoName,
+                issueNumber,
+                body: config.comment.task.apiUnavailable,
+                ...p,
+            });
+            return;
+        }
         log.info(
             {
                 handlerDecision: "task_branch_no_existing_task",
@@ -188,7 +209,7 @@ export async function onIssueLabeled(
                 },
                 event.repo.provider,
             );
-            if (newTaskRes) {
+            if (newTaskRes.ok) {
                 log.info(
                     {
                         handlerDecision: "reply_new_task_success",
@@ -210,9 +231,20 @@ export async function onIssueLabeled(
                         handlerDecision: "new_task_failed_no_comment",
                         repoFullName,
                         issueNumber,
+                        apiError: newTaskRes.apiError,
+                        apiMessage: newTaskRes.message,
                     },
-                    "onIssueLabeled: checkTask passed but newTask returned false; no success comment",
+                    "onIssueLabeled: checkTask passed but newTask returned false",
                 );
+                await scm.createIssueComment({
+                    owner,
+                    repo: repoName,
+                    issueNumber,
+                    body: newTaskRes.apiError
+                        ? config.comment.task.apiUnavailable
+                        : config.comment.command.invalidTaskState,
+                    ...p,
+                });
             }
         } else {
             log.info(
@@ -227,7 +259,7 @@ export async function onIssueLabeled(
                 owner,
                 repo: repoName,
                 issueNumber,
-                body: checkRes.message,
+                body: checkRes.apiError ? config.comment.task.apiUnavailable : checkRes.message,
                 ...p,
             });
         }
@@ -259,7 +291,19 @@ export async function onIssueLabeled(
                 },
                 "onIssueLabeled: updating task score and posting successUpdate",
             );
-            await Task.updateTaskScore(event.issue, score, event.repo.provider);
+            const updateRes = await Task.updateTaskScore(event.issue, score, event.repo.provider);
+            if (!updateRes.ok) {
+                await scm.createIssueComment({
+                    owner,
+                    repo: repoName,
+                    issueNumber,
+                    body: updateRes.apiError
+                        ? config.comment.task.apiUnavailable
+                        : config.comment.command.invalidTaskState,
+                    ...p,
+                });
+                return;
+            }
             await scm.createIssueComment({
                 owner,
                 repo: repoName,

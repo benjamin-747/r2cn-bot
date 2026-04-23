@@ -205,16 +205,59 @@ export function registerAtomgitWebhookRoutes(
     );
 }
 
+export function registerHealthzRoute(router: Router): void {
+    router.get("/healthz", (_req: Request, res: Response) => {
+        res.status(200).json({ ok: true });
+    });
+}
+
 /**
  * Mount Atomgit webhook when `getRouter` is available (Probot server).
  */
 export function mountAtomgitWebhookIfPresent(app: Probot, options: unknown): void {
     const getRouter = (options as { getRouter?: (path?: string) => Router }).getRouter;
+    const addHandler = (
+        options as {
+            addHandler?: (handler: (req: Request, res: Response) => boolean | void | Promise<boolean | void>) => void;
+        }
+    ).addHandler;
+
+    if (addHandler !== undefined) {
+        const customApp = express();
+        registerHealthzRoute(customApp);
+        const atomgitRouter = express.Router();
+        registerAtomgitWebhookRoutes(atomgitRouter, app.log);
+        customApp.use("/webhooks/atomgit", atomgitRouter);
+        try {
+            addHandler((req, res) => {
+                const url = req.url ?? "";
+                const isHealthz = url === "/healthz" || url.startsWith("/healthz?");
+                const isAtomgit = url === "/webhooks/atomgit" || url.startsWith("/webhooks/atomgit?");
+                if (!isHealthz && !isAtomgit) {
+                    return false;
+                }
+                customApp(req, res);
+                return true;
+            });
+            app.log.info("healthz mounted at GET /healthz");
+            app.log.info("Atomgit webhook mounted at POST /webhooks/atomgit");
+            return;
+        } catch (err) {
+            app.log.warn({ err }, "addHandler unavailable at runtime; fallback to getRouter path");
+        }
+    }
+
     if (getRouter === undefined) {
-        app.log.warn("getRouter unavailable: Atomgit /webhooks/atomgit not mounted");
+        if ((process.env.ATOMGIT_WEBHOOK_SECRET ?? "") !== "") {
+            app.log.warn("getRouter unavailable: Atomgit routes (/webhooks/atomgit, /healthz) not mounted");
+        } else {
+            app.log.debug("getRouter unavailable and Atomgit is disabled; skipping Atomgit routes");
+        }
         return;
     }
+    registerHealthzRoute(getRouter());
     const router = getRouter("/webhooks/atomgit");
     registerAtomgitWebhookRoutes(router, app.log);
+    app.log.info("healthz mounted at GET /healthz");
     app.log.info("Atomgit webhook mounted at POST /webhooks/atomgit");
 }

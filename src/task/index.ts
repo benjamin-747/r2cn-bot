@@ -16,6 +16,18 @@ export interface Task {
     mentor_login: string,
 }
 
+export interface TaskLookupResult {
+    task: Task | null;
+    apiError: boolean;
+    message: string;
+}
+
+export interface TaskApiResult {
+    ok: boolean;
+    apiError: boolean;
+    message: string;
+}
+
 export enum TaskStatus {
     Open = "Open",
     Invalid = "Invalid",
@@ -25,13 +37,32 @@ export enum TaskStatus {
     Finished = "Finished",
 }
 
-export async function getTask(issue_id: number, provider: ScmProvider) {
+export async function getTaskLookup(issue_id: number, provider: ScmProvider): Promise<TaskLookupResult> {
     const base = `${process.env.API_ENDPOINT}/task/issue/${issue_id}`;
     const url = `${base}?${new URLSearchParams({ scm_provider: provider }).toString()}`;
-    const res = await fetchData<Task>(url).then((res) => {
-        return res.data
+    const apiRes = await fetchData<Task>(url);
+    const res = apiRes.data;
+    const apiError = res == null && apiRes.message !== "success";
+    console.info("[task/getTask] result", {
+        issue_id,
+        provider,
+        hasTask: res != null,
+        apiError,
+        apiMessage: apiRes.message,
+        task_status: res?.task_status,
+        mentor_login: res?.mentor_login,
+        student_login: res?.student_login,
     });
-    return res
+    return {
+        task: res ?? null,
+        apiError,
+        message: apiRes.message,
+    };
+}
+
+export async function getTask(issue_id: number, provider: ScmProvider) {
+    const lookup = await getTaskLookup(issue_id, provider);
+    return lookup.task;
 }
 
 type TaskCreateBase = {
@@ -65,7 +96,7 @@ function requireRepoNumericId(repo: RepoRef, op: string): number {
 export async function newTask(
     input: NewTaskInput,
     provider: ScmProvider,
-) {
+): Promise<TaskApiResult> {
     const { repo, issue, mentor, score } = input;
     const repoId = requireRepoNumericId(repo, "newTask");
     const req: TaskCreateRequest = {
@@ -85,14 +116,13 @@ export async function newTask(
         }),
     };
     const apiUrl = `${process.env.API_ENDPOINT}/task/new`;
-    const res = await postData<Task[], typeof req>(apiUrl, req).then((res) => {
-        return res.data
-    });
-    if (res != undefined) {
-        return true
-    } else {
-        return false
-    }
+    const apiRes = await postData<Task[], typeof req>(apiUrl, req);
+    const apiError = apiRes.data == null && apiRes.message !== "success";
+    return {
+        ok: apiRes.data != null,
+        apiError,
+        message: apiRes.message,
+    };
 }
 
 interface TaskUpdate {
@@ -110,20 +140,20 @@ export async function updateTaskScore(issue: IssueRef, score: number, provider: 
     } as TaskUpdate & ReturnType<typeof scmBackendFields>;
 
     const apiUrl = `${process.env.API_ENDPOINT}/task/update-score`;
-    const res = await postData<boolean, typeof req>(apiUrl, req).then((res) => {
-        return res.data
-    });
-    if (res != undefined) {
-        return true
-    } else {
-        return false
-    }
+    const apiRes = await postData<boolean, typeof req>(apiUrl, req);
+    const apiError = apiRes.data == null && apiRes.message !== "success";
+    return {
+        ok: apiRes.data != null,
+        apiError,
+        message: apiRes.message,
+    } as TaskApiResult;
 }
 
 
 export interface CheckTaskResults {
     result: boolean,
     message: string,
+    apiError: boolean,
 }
 
 export async function checkTask(
@@ -136,6 +166,7 @@ export async function checkTask(
     var fail_res = {
         result: false,
         message: "",
+        apiError: false,
     };
 
     const apiUrl = `${process.env.API_ENDPOINT}/task/search`;
@@ -147,9 +178,23 @@ export async function checkTask(
             fullName: repo.fullName,
         }),
     }
-    const tasks = await postData<Task[], typeof req>(apiUrl, req).then((res) => {
-        return res.data
-    });
+    const apiRes = await postData<Task[], typeof req>(apiUrl, req);
+    const apiError = apiRes.data == null && apiRes.message !== "success";
+    if (apiError) {
+        console.warn("[task/search] api error", {
+            repo_id: repoId,
+            mentor_login: maintainer.id,
+            provider,
+            apiUrl,
+            message: apiRes.message,
+        });
+        return {
+            result: false,
+            message: "task_search_api_error",
+            apiError: true,
+        };
+    }
+    const tasks = apiRes.data;
     if (tasks == null) {
         console.warn("[task/search] backend returned null, fallback to empty task list", {
             repo_id: repoId,
@@ -162,11 +207,13 @@ export async function checkTask(
 
     if (safeTasks.length >= maintainer.task) {
         fail_res.message = config.comment.task.userToomanyTask;
+        fail_res.apiError = false;
         return fail_res
     }
 
     return {
         result: true,
         message: "",
+        apiError: false,
     }
 }
