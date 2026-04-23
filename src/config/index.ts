@@ -1,12 +1,12 @@
-import axios, { AxiosResponse } from "axios";
+import axios, { AxiosError, AxiosResponse } from "axios";
 
-export interface R2CN {
-    repos: Repo[];
-}
-
-interface Repo {
+export interface ApprovedRepositoryConfig {
     name: string,
     maintainers: Maintainer[]
+}
+
+export interface ApprovedRepositoriesConfigFile {
+    repos: ApprovedRepositoryConfig[];
 }
 
 export interface Maintainer {
@@ -17,7 +17,7 @@ export interface Maintainer {
 
 export interface Config {
     comment: BotComment,
-    r2cn: R2CN,
+    approvedRepositories: ApprovedRepositoryConfig[],
 }
 
 export interface BotComment {
@@ -102,7 +102,7 @@ export const getClaimedLabelName = (owner: string, repo: string) => {
 };
 
 export interface CommandRequest {
-    github_issue_id: number,
+    issue_id: number,
     student_login?: string
 }
 
@@ -111,38 +111,54 @@ interface ApiResponse<T> {
     data: T;
 }
 
+const http = axios.create({
+    headers: { "Content-Type": "application/json" },
+});
+
+function toFailedApiResponse<T>(error: unknown): ApiResponse<T> {
+    if (axios.isAxiosError(error)) {
+        const e = error as AxiosError<{ message?: string }>;
+        const status = e.response?.status;
+        const backendMessage = e.response?.data?.message;
+        const msg =
+            backendMessage ??
+            (status != null ? `HTTP ${status}: ${e.message}` : e.message) ??
+            "Unknown error occurred";
+        return { message: msg, data: null as unknown as T };
+    }
+    if (error instanceof Error) {
+        return { message: error.message, data: null as unknown as T };
+    }
+    return { message: "Unknown error occurred", data: null as unknown as T };
+}
+
 export const fetchData = async <T>(url: string): Promise<ApiResponse<T>> => {
     try {
-        const response: AxiosResponse<ApiResponse<T>> = await axios.get(url, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-        console.log('External API response:', response.data);
+        console.info("[api] request", { method: "GET", url });
+        const response: AxiosResponse<ApiResponse<T>> = await http.get(url);
+        console.info("[api] response", { method: "GET", url, message: response.data.message });
         return response.data;
-    } catch (error: any) {
-        console.error('Error fetching external API:', error);
-        return {
-            message: error.message || 'Unknown error occurred',
-            data: null,
-        } as ApiResponse<T>;
+    } catch (error: unknown) {
+        const failed = toFailedApiResponse<T>(error);
+        console.error("[api] error", { method: "GET", url, error: failed.message });
+        return failed;
     }
 };
 
 export const postData = async <T, U>(url: string, payload: U): Promise<ApiResponse<T>> => {
     try {
-        const response: AxiosResponse<ApiResponse<T>> = await axios.post(url, payload, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-        console.log('External API response:', response.data);
+        console.info("[api] request", { method: "POST", url, payload });
+        const response: AxiosResponse<ApiResponse<T>> = await http.post(url, payload);
+        console.info("[api] response", { method: "POST", url, message: response.data.message });
         return response.data;
-    } catch (error: any) {
-        console.error('Error posting external API:', error);
-        return {
-            message: error.message || 'Unknown error occurred',
-            data: null,
-        } as ApiResponse<T>;
+    } catch (error: unknown) {
+        const failed = toFailedApiResponse<T>(error);
+        console.error("[api] error", {
+            method: "POST",
+            url,
+            error: failed.message,
+            payload,
+        });
+        return failed;
     }
 };

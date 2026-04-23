@@ -1,77 +1,77 @@
 project:
   noneProjectComment: >
-    欢迎参与R2CN项目，在开始之前，您需要先提交一个PR， 详情可参考文档 https://r2cn.dev/docs/project/signup
+    欢迎参与R2CN项目,在开始之前您需要先提交一个PR, 详情可参考文档 https://r2cn.dev/docs/project/signup
   noneMaintainerComment: >
-    您当前没有权限来创建R2CN任务，请联系您仓库或者组织管理员提交PR将您的GitHub ID加入r2cn.yaml文件，参考 https://r2cn.dev/docs/project/mentor-and-tasks/mentor。
+    您当前没有权限来创建R2CN任务,请联系您仓库或者组织管理员提交PR将您的GitHub ID加入r2cn.yaml文件,参考 https://r2cn.dev/docs/project/mentor-and-tasks/mentor
 
 task:
   success: >
-    任务创建成功。
+    R2CN任务创建成功.
   successUpdate: >
-    任务更新成功，当前分值为
+    任务更新成功,当前分值为
   notAllowedModify: >
-    任务完成后无法修改分值等信息。
+    任务完成后无法修改分值等信息.
   taskNotFound: >
-    任务还未创建，需要使用“R2CN-分值”标签先创建任务。
+    任务还未创建,需要使用“R2CN-分值”标签先创建任务.
   scoreUndefinedComment: >
-    请使用“R2CN-分值”标签来创建任务，当前标签的分值不正确。
+    请使用“R2CN-分值”标签来创建任务,当前标签的分值不正确.
   scoreInvalidComment: >
-    R2CN-分值超出组织管理员配置的上限，或者分值小于2。
+    R2CN-分值超出组织管理员配置的上限,或者分值小于2.
   multiScoreLabel: >
-    只能拥有一个分值标签，请先移除所有r2cn-分数标签，然后再选择1个r2cn-分数标签来新建任务。  
+    只能拥有一个分值标签,请先移除所有r2cn-分数标签,然后再选择1个r2cn-分数标签来新建任务.
   userToomanyTask: >
-    当前激活的任务数量超过组织管理员配置的上限，请检查任务数量或者联系管理员修改上限。
+    当前激活的任务数量超过组织管理员配置的上限,请检查任务数量或者联系管理员修改上限.
 
 command:
   noPermission: >
-    操作失败：您当前没有权限修改该任务。
+    操作失败: 您当前没有权限修改该任务.
   invalidTaskState: >
-    操作失败：当前任务的状态不允许进行该操作。
+    操作失败: 当前任务的状态不允许进行该操作.
   unsupportStuCommand: >
-    不支持的命令：当前仅支持 /request-assign, /request-complete, 和 /request-release命令。
+    不支持的命令: 当前仅支持 /request-assign, /request-complete, 和 /request-release命令.
   unsupportMentorCommand: >
-    不支持的命令：当前仅支持 /intern-disapprove, /intern-approve, /intern-fail, /intern-done 和 /intern-close命令。
+    不支持的命令: 当前仅支持 /intern-disapprove, /intern-approve, /intern-fail, /intern-done 和 /intern-close命令.
 
 requestAssign:
   success: >
-    认领成功：等待导师审核，请及时联系导师进行审核。
+    认领成功: 等待导师审核,请及时联系导师进行审核.
   waitingInfoReview: >
-    认领失败：请先在 https://summer-ospp.ac.cn/r2cnLogin 进行学生注册并通过审核后才能认领任务。
+    认领失败: 请先在 https://summer-ospp.ac.cn/r2cnLogin 进行学生注册并通过审核后才能认领任务.
   waitingContract: >
-    认领失败：合同未签署，如果已经确认签署请在 R2CN Discord(https://discord.gg/WRp4TKv6rh) 的 #signup-student 频道联系管理员更新合同签署状态。
+    认领失败: 合同未签署,如果已经确认签署请在 R2CN Discord(https://discord.gg/WRp4TKv6rh) 的 #signup-student 频道联系管理员更新合同签署状态.
   existTask: >
-    认领失败：你已经存在认领中的任务了。
+    认领失败: 你已经存在认领中的任务了.
   claimByOther: >
-    认领失败：已经有同学申请了此任务，请选择其他任务。
+    认领失败: 已经有同学申请了此任务,请选择其他任务.
   alreadyClaim: >
-    认领失败：该任务已经被你认领，请不要重复认领！
+    认领失败: 该任务已经被你认领,请不要重复认领！
 
 internDisapprove:
   success: >
-    拒绝认领成功：任务释放为开放状态。
+    拒绝认领成功: 任务释放为开放状态.
 
 internApprove:
   success: >
-    认领审核成功：已将该任务分配给学生。
+    认领审核成功: 已将该任务分配给学生.
 
 requestComplete:
   success: >
-    请求完成成功：等待导师进行完成审核。
+    请求完成成功: 等待导师进行完成审核.
   noRelatedPR: >
-    请求完成失败：至少需要一个关联的PR。
+    请求完成失败: 至少需要一个关联的PR.
 
 requestRelease:
   success: >
-    请求释放成功：当前任务重新开放。
+    请求释放成功: 当前任务重新开放.
 
 internFail:
   success: >
-    学生任务失败：当前任务重新开放。
+    学生任务失败: 当前任务重新开放.
 
 internDone:
   success: >
-    操作成功：任务关闭并发放积分给学生。
+    操作成功: 任务关闭并发放积分给学生.
 
 internClose:
   success: >
-    操作成功：任务关闭不再追踪。
+    操作成功: 任务关闭不再追踪.

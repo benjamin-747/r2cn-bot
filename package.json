@@ -1,40 +1,50 @@
 {
   "name": "r2cn-bot",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "A Probot app",
+  "description": "A Openatom Internship Bot app",
   "author": "benjamin.747",
   "license": "ISC",
   "homepage": "https://github.com//",
   "keywords": [
     "probot",
     "github",
+    "atomgit",
+    "openatom",
+    "internship",
+    "bot",
     "probot-app"
   ],
   "scripts": {
     "build": "tsc",
+    "prestart": "tsc",
     "start": "probot run ./lib/index.js",
     "test": "vitest"
   },
   "dependencies": {
-    "axios": "^1.7.9",
-    "js-yaml": "4.1.0",
+    "axios": "^1.15.2",
+    "express": "^5.2.1",
+    "js-yaml": "4.1.1",
     "node-fetch": "^3.3.2",
-    "pino": "^9.6.0",
-    "probot": "^13.4.1",
-    "simple-git": "^3.27.0",
+    "pino": "^10.3.1",
+    "probot": "^14.3.2",
+    "simple-git": "^3.36.0",
     "stream": "^0.0.3"
   },
   "devDependencies": {
+    "@octokit/webhooks-types": "^7.6.1",
+    "@types/express": "^5.0.6",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^22.10.0",
-    "nock": "^14.0.0-beta.5",
-    "smee-client": "^2.0.0",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.6"
+    "@types/node": "^25.6.0",
+    "nock": "^14.0.13",
+    "octokit": "^5.0.5",
+    "smee-client": "^5.0.0",
+    "typescript": "^6.0.3",
+    "vite": "^6.4.2",
+    "vitest": "^4.1.5"
   },
   "engines": {
-    "node": ">= 18"
+    "node": ">= 22"
   },
   "type": "module"
 }

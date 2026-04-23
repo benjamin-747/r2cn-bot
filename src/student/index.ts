@@ -1,16 +1,22 @@
 
-import { User } from "@octokit/webhooks-types";
-import { CommandRequest, Config, getClaimedLabelName, postData } from "./common.js";
-import { Task, TaskStatus } from "./task.js";
-import { Context } from "probot";
-import { Payload } from "./mentor.js";
+import { CommandRequest, Config, getClaimedLabelName, postData } from "../config/index.js";
+import type { Actor } from "../canonical/refs.js";
+import { Task, TaskStatus } from "../task/index.js";
+import type { Payload } from "../mentor/index.js";
+import type { ScmClient } from "../scm/types.js";
+import { scmProjectOptsFromTask } from "../handlers/scm-project-opts.js";
+import {
+    mergeBackendProviderOnly,
+    mergeBackendWithTask,
+    type ScmBackendRequestFields,
+} from "../api/scm-backend-payload.js";
 
-export async function handle_stu_cmd(context: Context, config: Config, payload: Payload) {
+export async function handle_stu_cmd(scm: ScmClient, config: Config, payload: Payload) {
     var command_res = {
         result: false,
         message: "",
     };
-    const { user, command, task } = payload;
+    const { actor, command, task, scmProvider } = payload;
 
     const setResponse = (message: string, result: boolean = false) => {
         command_res.message = message;
@@ -18,13 +24,17 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
         return command_res;
     };
 
-    const isStudentAuthorized = (task: Task, student: User) => {
-        return task.student_github_login === student.login;
+    if (task == null) {
+        return setResponse(config.comment.command.invalidTaskState);
+    }
+
+    const isStudentAuthorized = (task: Task, student: Actor) => {
+        return task.student_login === student.login;
     };
 
     const req = {
-        github_issue_id: task.github_issue_id,
-        student_login: user.login,
+        issue_id: task.issue_id,
+        student_login: actor.login,
     };
 
     switch (command) {
@@ -38,7 +48,7 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
             }
 
             // 学生身份校验
-            const verify = await verifyStudentIdentity(user.login);
+            const verify = await verifyStudentIdentity(actor.login, scmProvider);
             if (!verify.success) {
                 return setResponse(config.comment.requestAssign.waitingInfoReview);
             }
@@ -48,18 +58,15 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
             //     return setResponse(config.comment.requestAssign.waitingContract);
             // }
 
-            if (task.student_github_login === user.login) {
+            if (task.student_login === actor.login) {
                 return setResponse(config.comment.requestAssign.alreadyClaim);
             }
 
-            if (!await verifyStudentTask(user.login)) {
+            if (!await verifyStudentTask(actor.login, scmProvider)) {
                 return setResponse(config.comment.requestAssign.existTask);
             }
 
-            if (await requestAssign({
-                github_issue_id: task.github_issue_id,
-                student_login: user.login,
-            })) {
+            if (await requestAssign(req, task, scmProvider)) {
                 return setResponse(config.comment.requestAssign.success, true);
             } else {
                 return setResponse("API ERROR");
@@ -69,7 +76,7 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
                 return setResponse(config.comment.command.invalidTaskState);
             }
 
-            if (!isStudentAuthorized(task, user)) {
+            if (!isStudentAuthorized(task, actor)) {
                 return setResponse(config.comment.command.noPermission);
             }
 
@@ -77,13 +84,13 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
             // const res = await context.octokit.issues.get({
             //     owner: task.owner,
             //     repo: task.repo,
-            //     issue_number: task.github_issue_number
+            //     issue_number: task.issue_number
             // });
 
             // if (res.data.pull_request == undefined) {
             //     return setResponse(config.requestComplete.noRelatedPR);
             // }
-            await requestComplete(req)
+            await requestComplete(req, task, scmProvider)
             return setResponse(config.comment.requestComplete.success, true);
 
         case "/request-release":
@@ -91,11 +98,11 @@ export async function handle_stu_cmd(context: Context, config: Config, payload: 
                 return setResponse(config.comment.command.invalidTaskState);
             }
 
-            if (!isStudentAuthorized(task, user)) {
+            if (!isStudentAuthorized(task, actor)) {
                 return setResponse(config.comment.command.noPermission);
             }
 
-            await releaseTask(req, context, payload)
+            await releaseTask(req, scm, payload)
             return setResponse(config.comment.requestRelease.success, true);
 
         default:
@@ -114,21 +121,19 @@ interface VerifyStuRes {
     contract_deadline?: string,
 }
 
-async function verifyStudentIdentity(login: string) {
+async function verifyStudentIdentity(login: string, scmProvider: Payload["scmProvider"]) {
     const apiUrl = `${process.env.API_ENDPOINT}/student/validate`;
-    const res = await postData<VerifyStuRes, UserReq>(apiUrl, {
-        "login": login
-    }).then((res) => {
+    const body: UserReq & ScmBackendRequestFields = mergeBackendProviderOnly({ login }, scmProvider);
+    const res = await postData<VerifyStuRes, typeof body>(apiUrl, body).then((res) => {
         return res.data
     });
     return res
 }
 
-async function verifyStudentTask(login: string) {
+async function verifyStudentTask(login: string, scmProvider: Payload["scmProvider"]) {
     const apiUrl = `${process.env.API_ENDPOINT}/student/task`;
-    const res = await postData<Task, UserReq>(apiUrl, {
-        "login": login
-    }).then((res) => {
+    const body: UserReq & ScmBackendRequestFields = mergeBackendProviderOnly({ login }, scmProvider);
+    const res = await postData<Task, typeof body>(apiUrl, body).then((res) => {
         return res.data
     });
     return res === null
@@ -136,44 +141,57 @@ async function verifyStudentTask(login: string) {
 
 
 
-async function requestAssign(req: CommandRequest) {
+async function requestAssign(req: CommandRequest, task: Task, scmProvider: Payload["scmProvider"]) {
     const apiUrl = `${process.env.API_ENDPOINT}/task/request-assign`;
-    const res = await postData<boolean, CommandRequest>(apiUrl, req).then((res) => {
+    const body = mergeBackendWithTask(req, scmProvider, task);
+    const res = await postData<boolean, typeof body>(apiUrl, body).then((res) => {
         return res.data
     });
     return res
 }
 
-export async function releaseTask(req: CommandRequest, context: Context, payload: Payload) {
-    const { task, issue } = payload;
+export async function releaseTask(req: CommandRequest, scm: ScmClient, payload: Payload) {
+    const { task, issueLabels, scmProvider } = payload;
+    if (task == null) {
+        return false;
+    }
     const claimedLabel = getClaimedLabelName(task.owner, task.repo);
-    const existingLabels = issue.labels?.some(label => label.name === claimedLabel);
+    const existingLabels = issueLabels.some(label => label.name === claimedLabel);
+    const tp = scmProjectOptsFromTask(task);
     if (existingLabels) {
-        await context.octokit.issues.removeLabel({
+        await scm.removeLabel({
             owner: task.owner,
             repo: task.repo,
-            issue_number: task.github_issue_number,
+            issueNumber: task.issue_number,
             name: claimedLabel,
+            ...tp,
         });
     }
-    if (task.student_github_login) { 
-        await context.octokit.issues.removeAssignees({
+    if (task.student_login) {
+        await scm.removeAssignees({
             owner: task.owner,
             repo: task.repo,
-            issue_number: task.github_issue_number,
-            assignees: [task.student_github_login],
+            issueNumber: task.issue_number,
+            assignees: [task.student_login],
+            ...tp,
         });
     }
     const apiUrl = `${process.env.API_ENDPOINT}/task/release`;
-    const res = await postData<boolean, CommandRequest>(apiUrl, req).then((res) => {
+    const body = mergeBackendWithTask(req, scmProvider, task);
+    const res = await postData<boolean, typeof body>(apiUrl, body).then((res) => {
         return res.data
     });
     return res
 }
 
-async function requestComplete(req: CommandRequest) {
+async function requestComplete(
+    req: CommandRequest,
+    task: Task,
+    scmProvider: Payload["scmProvider"],
+) {
     const apiUrl = `${process.env.API_ENDPOINT}/task/request-complete`;
-    const res = await postData<boolean, CommandRequest>(apiUrl, req).then((res) => {
+    const body = mergeBackendWithTask(req, scmProvider, task);
+    const res = await postData<boolean, typeof body>(apiUrl, body).then((res) => {
         return res.data
     });
     return res
