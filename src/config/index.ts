@@ -55,6 +55,7 @@ interface TaskComment {
     multiScoreLabel: string,
     scoreInvalidComment: string,
     userToomanyTask: string,
+    budgetExceeded: string,
 }
 
 interface CommandComment {
@@ -116,6 +117,7 @@ export interface ApiResponse<T> {
     message: string;
     data: T;
     status?: number;
+    code?: string;
 }
 
 const http = axios.create({

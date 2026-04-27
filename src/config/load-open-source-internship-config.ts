@@ -12,7 +12,7 @@ type CacheEntry = {
 };
 
 const cache: { entry: CacheEntry | null } = { entry: null };
-const DEFAULT_INTERNSHIP_CONFIG: InternshipConfig = { tagPrefix: "r2cn" };
+const DEFAULT_INTERNSHIP_CONFIG: InternshipConfig = { tagPrefix: "openatom" };
 
 type RawPayload = {
     success?: boolean;

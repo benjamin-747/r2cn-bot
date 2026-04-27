@@ -11,7 +11,7 @@ export type IssueLabeled = {
     /** Issue author (`issue.user`). */
     issueAuthor?: Actor;
     label: LabelRef;
-    /** Full label snapshot used for multi `r2cn-*` validation. */
+    /** Full label snapshot used for multi score-prefix validation. */
     labels: LabelRef[];
 };
 

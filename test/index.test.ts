@@ -19,10 +19,10 @@ const privateKey = fs.readFileSync(
   "utf-8",
 );
 
-/** Non-r2cn label: handler returns before config/API calls (only installation auth may run). */
+/** Non-score-prefix label: handler returns before config/API calls (only installation auth may run). */
 const issuesLabeledNonR2cnPayload = JSON.parse(
   fs.readFileSync(
-    path.join(__dirname, "fixtures/issues.labeled-non-r2cn.json"),
+    path.join(__dirname, "fixtures/issues.labeled-non-score-prefix.json"),
     "utf-8",
   ),
 );
@@ -45,7 +45,7 @@ describe("My Probot app", () => {
     probot.load(myProbotApp);
   });
 
-  test("issues.labeled with non-r2cn label skips without GitHub API calls", async () => {
+test("issues.labeled with non-score-prefix label skips without GitHub API calls", async () => {
     const mock = nock("https://api.github.com");
 
     await probot.receive({

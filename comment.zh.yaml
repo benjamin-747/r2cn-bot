@@ -1,8 +1,8 @@
 project:
   noneProjectComment: >
-    欢迎参与R2CN项目,在开始之前您需要先去 portal 申请项目注册和导师资格录入，详情可参考文档 https://r2cn.dev/docs/project/signup
+    欢迎参与开源实习项目,在开始之前您需要先去 portal 申请项目注册和导师资格录入，详情可参考文档 https://r2cn.dev/docs/project/signup
   noneMaintainerComment: >
-    您当前没有权限来创建R2CN任务,请联系开源实习方将您的信息维护到系统中.
+    您当前没有权限来创建开源实习任务,请联系开源实习方将您的信息维护到系统中.
 
 system:
   apiUnavailable: >
@@ -12,7 +12,7 @@ system:
 
 task:
   success: >
-    R2CN任务创建成功.
+    开源实习任务创建成功.
   successUpdate: >
     任务更新成功,当前分值为
   notAllowedModify: >
@@ -24,9 +24,11 @@ task:
   scoreInvalidComment: >
     系统管理员配置的标签前缀-分值超出组织管理员配置的上限,或者分值小于2.
   multiScoreLabel: >
-    只能拥有一个分值标签,请先移除所有r2cn-分数标签,然后再选择1个r2cn-分数标签来新建任务.
+    只能拥有一个分值标签,请先移除所有开源实习-分数标签,然后再选择1个开源实习-分数标签来新建任务.
   userToomanyTask: >
     当前激活的任务数量超过组织管理员配置的上限,请检查任务数量或者联系管理员修改上限.
+  budgetExceeded: >
+    当前无法创建任务，请联系管理员进行处理。
 
 command:
   noPermission: >
@@ -44,7 +46,7 @@ requestAssign:
   waitingInfoReview: >
     认领失败: 请先在 https://internship.xuanwu.openatom.cn/zh-CN/signin 进行学生注册并通过审核后才能认领任务.
   waitingContract: >
-    认领失败: 合同未签署,如果已经确认签署请在 R2CN Discord(https://discord.gg/WRp4TKv6rh) 的 #signup-student 频道联系管理员更新合同签署状态.
+    认领失败: 合同未签署,如果已经确认签署请在开源实习 Discord(https://discord.gg/WRp4TKv6rh) 的 #signup-student 频道联系管理员更新合同签署状态.
   existTask: >
     认领失败: 你已经存在认领中的任务了.
   claimByOther: >

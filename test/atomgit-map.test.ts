@@ -80,7 +80,7 @@ describe("map-atomgit-to-canonical", () => {
         expect(d.reason).toBe("object_kind_not_note_or_issue");
     });
 
-    test("atomgitWebhookMappingDiagnosis explains issue open without r2cn score labels", () => {
+    test("atomgitWebhookMappingDiagnosis explains issue open without score labels", () => {
         const d = atomgitWebhookMappingDiagnosis({
             eventHeader: "",
             body: {
@@ -88,10 +88,10 @@ describe("map-atomgit-to-canonical", () => {
                 object_attributes: { action: "open", id: 1, iid: 1, title: "t" },
             },
         });
-        expect(d.reason).toBe("issue_open_no_r2cn_score_labels");
+        expect(d.reason).toBe("issue_open_no_score_labels");
     });
 
-    test("Issue Hook open with r2cn-* on object_attributes maps to IssueLabeled", () => {
+    test("Issue Hook open with openatom-* on object_attributes maps to IssueLabeled", () => {
         const body = {
             object_kind: "issue",
             project: { id: 1, path_with_namespace: "g/p" },
@@ -102,13 +102,13 @@ describe("map-atomgit-to-canonical", () => {
                 title: "new",
                 web_url: "https://x",
                 author: { username: "mentor", id: 1 },
-                labels: [{ title: "bug" }, { title: "r2cn-15" }],
+                labels: [{ title: "bug" }, { title: "openatom-15" }],
             },
         };
         const ev = atomgitIssueHookToIssueLabeled(body, "d-open");
         expect(ev).not.toBeNull();
         expect(ev!.kind).toBe("IssueLabeled");
-        expect(ev!.label.name).toBe("r2cn-15");
+        expect(ev!.label.name).toBe("openatom-15");
     });
 
     test("Issue Hook open reads labels from top-level issue when object_attributes.labels empty", () => {
@@ -127,12 +127,12 @@ describe("map-atomgit-to-canonical", () => {
             issue: {
                 id: 500,
                 iid: 1,
-                labels: [{ title: "r2cn-8" }],
+                labels: [{ title: "openatom-8" }],
             },
         };
         const ev = atomgitIssueHookToIssueLabeled(body, "d-open2");
         expect(ev).not.toBeNull();
-        expect(ev!.label.name).toBe("r2cn-8");
+        expect(ev!.label.name).toBe("openatom-8");
     });
 
     test("Issue Hook open reads labels from root body.labels (GitCode)", () => {
@@ -147,11 +147,11 @@ describe("map-atomgit-to-canonical", () => {
                 web_url: "https://x",
                 author: { username: "u", id: 1 },
             },
-            labels: [{ title: "r2cn" }, { title: "r2cn-20" }],
+            labels: [{ title: "openatom" }, { title: "openatom-20" }],
         };
         const ev = atomgitIssueHookToIssueLabeled(body, "d-open-root");
         expect(ev).not.toBeNull();
-        expect(ev!.label.name).toBe("r2cn-20");
+        expect(ev!.label.name).toBe("openatom-20");
     });
 
     test("Issue Hook open reads labels from changes.labels.current when others empty", () => {
@@ -168,16 +168,16 @@ describe("map-atomgit-to-canonical", () => {
             changes: {
                 labels: {
                     previous: [],
-                    current: [{ title: "r2cn-5" }],
+                    current: [{ title: "openatom-5" }],
                 },
             },
         };
         const ev = atomgitIssueHookToIssueLabeled(body, "d-open-ch");
         expect(ev).not.toBeNull();
-        expect(ev!.label.name).toBe("r2cn-5");
+        expect(ev!.label.name).toBe("openatom-5");
     });
 
-    test("Issue Hook with multiple labels added maps; primary label is first r2cn-* in added order", () => {
+    test("Issue Hook with multiple labels added maps; primary label is first openatom-* in added order", () => {
         const body = {
             object_kind: "issue",
             project: { id: 99, path_with_namespace: "g/p" },
@@ -190,8 +190,8 @@ describe("map-atomgit-to-canonical", () => {
                 author: { username: "mentor", id: 1 },
                 labels: [
                     { title: "bug" },
-                    { title: "r2cn-10" },
-                    { title: "r2cn-20" },
+                    { title: "openatom-10" },
+                    { title: "openatom-20" },
                 ],
             },
             changes: {
@@ -199,8 +199,8 @@ describe("map-atomgit-to-canonical", () => {
                     previous: [{ title: "bug" }],
                     current: [
                         { title: "bug" },
-                        { title: "r2cn-10" },
-                        { title: "r2cn-20" },
+                        { title: "openatom-10" },
+                        { title: "openatom-20" },
                     ],
                 },
             },
@@ -208,8 +208,8 @@ describe("map-atomgit-to-canonical", () => {
         const ev = atomgitIssueHookToIssueLabeled(body, "d-multi");
         expect(ev).not.toBeNull();
         expect(ev!.kind).toBe("IssueLabeled");
-        expect(ev!.label.name).toBe("r2cn-10");
-        expect(ev!.labels.map((l) => l.name)).toEqual(["bug", "r2cn-10", "r2cn-20"]);
+        expect(ev!.label.name).toBe("openatom-10");
+        expect(ev!.labels.map((l) => l.name)).toEqual(["bug", "openatom-10", "openatom-20"]);
     });
 
     test("atomgitWebhookMappingDiagnosis for multiple added uses zero_added only when diff empty", () => {

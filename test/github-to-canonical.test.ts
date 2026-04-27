@@ -14,7 +14,7 @@ describe("GitHub → Canonical (phase 1)", () => {
     test("issues.labeled maps to IssueLabeled", () => {
         const raw = JSON.parse(
             fs.readFileSync(
-                path.join(__dirname, "fixtures/issues.labeled-non-r2cn.json"),
+                path.join(__dirname, "fixtures/issues.labeled-non-score-prefix.json"),
                 "utf-8",
             ),
         );
