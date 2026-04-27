@@ -1,5 +1,6 @@
 import type { Octokit } from "octokit";
-import type { RepositoryFileContent, ScmClient } from "./types.js";
+import { logBotIssueReply } from "./log-bot-reply.js";
+import type { ScmClient } from "./types.js";
 
 /**
  * GitHub implementation of {@link ScmClient} using the installation-scoped Octokit from Probot.
@@ -16,37 +17,18 @@ export class GitHubScmClient implements ScmClient {
             projectId?: number;
         },
     ): Promise<void> {
+        logBotIssueReply({
+            owner: input.owner,
+            repo: input.repo,
+            issueNumber: input.issueNumber,
+            body: input.body,
+        });
         await this.octokit.rest.issues.createComment({
             owner: input.owner,
             repo: input.repo,
             issue_number: input.issueNumber,
             body: input.body,
         });
-    }
-
-    async getRepositoryContent(input: {
-        owner: string;
-        repo: string;
-        path: string;
-        projectId?: number;
-    }): Promise<RepositoryFileContent | null> {
-        const res = await this.octokit.rest.repos.getContent({
-            owner: input.owner,
-            repo: input.repo,
-            path: input.path,
-        });
-        if (Array.isArray(res.data)) {
-            return null;
-        }
-        if (!("type" in res.data) || res.data.type !== "file") {
-            return null;
-        }
-        if (!("content" in res.data) || typeof res.data.content !== "string") {
-            return null;
-        }
-        const raw = res.data.content.replace(/\n/g, "");
-        const content = Buffer.from(raw, "base64").toString("utf8");
-        return { content };
     }
 
     async removeLabel(input: {

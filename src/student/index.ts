@@ -1,5 +1,12 @@
 
-import { CommandRequest, Config, getClaimedLabelName, isBackendApiError, postData } from "../config/index.js";
+import {
+    CommandRequest,
+    Config,
+    getClaimedLabelName,
+    isBackendApiError,
+    isCommandApiDataSuccess,
+    postData,
+} from "../config/index.js";
 import type { Actor } from "../canonical/refs.js";
 import { Task, TaskStatus } from "../task/index.js";
 import type { Payload } from "../mentor/index.js";
@@ -72,6 +79,10 @@ export async function handle_stu_cmd(scm: ScmClient, config: Config, payload: Pa
 
     switch (command) {
         case "/request-assign":
+            if (task.student_login === actor.login) {
+                return setResponse(config.comment.requestAssign.alreadyClaim, "already_claimed_by_same_student");
+            }
+
             if (task.task_status == TaskStatus.RequestAssign) {
                 return setResponse(config.comment.requestAssign.claimByOther, "claim_by_other");
             }
@@ -83,7 +94,7 @@ export async function handle_stu_cmd(scm: ScmClient, config: Config, payload: Pa
             // 学生身份校验
             const verify = await verifyStudentIdentity(actor.login, scmProvider);
             if (verify.apiError) {
-                return setResponse(config.comment.task.apiUnavailable, "api_error", false, true);
+                return setResponse(config.comment.system.apiUnavailable, "api_error", false, true);
             }
             if (!verify.data?.success) {
                 return setResponse(config.comment.requestAssign.waitingInfoReview, "waiting_info_review");
@@ -94,13 +105,11 @@ export async function handle_stu_cmd(scm: ScmClient, config: Config, payload: Pa
             //     return setResponse(config.comment.requestAssign.waitingContract);
             // }
 
-            if (task.student_login === actor.login) {
-                return setResponse(config.comment.requestAssign.alreadyClaim, "already_claimed_by_same_student");
-            }
+
 
             const taskCheck = await verifyStudentTask(actor.login, scmProvider);
             if (taskCheck.apiError) {
-                return setResponse(config.comment.task.apiUnavailable, "api_error", false, true);
+                return setResponse(config.comment.system.apiUnavailable, "api_error", false, true);
             }
             if (!taskCheck.allow) {
                 return setResponse(config.comment.requestAssign.existTask, "existing_active_task");
@@ -108,7 +117,7 @@ export async function handle_stu_cmd(scm: ScmClient, config: Config, payload: Pa
 
             const assignRes = await requestAssign(req, task, scmProvider);
             if (assignRes.apiError) {
-                return setResponse(config.comment.task.apiUnavailable, "api_error", false, true);
+                return setResponse(config.comment.system.apiUnavailable, "api_error", false, true);
             }
             if (assignRes.ok) {
                 return setResponse(config.comment.requestAssign.success, "request_assign_success", true);
@@ -136,7 +145,7 @@ export async function handle_stu_cmd(scm: ScmClient, config: Config, payload: Pa
             // }
             const completeRes = await requestComplete(req, task, scmProvider);
             if (completeRes.apiError) {
-                return setResponse(config.comment.task.apiUnavailable, "api_error", false, true);
+                return setResponse(config.comment.system.apiUnavailable, "api_error", false, true);
             }
             if (!completeRes.ok) {
                 return setResponse(config.comment.command.invalidTaskState, "request_complete_failed");
@@ -154,7 +163,7 @@ export async function handle_stu_cmd(scm: ScmClient, config: Config, payload: Pa
 
             const releaseRes = await releaseTask(req, scm, payload);
             if (releaseRes.apiError) {
-                return setResponse(config.comment.task.apiUnavailable, "api_error", false, true);
+                return setResponse(config.comment.system.apiUnavailable, "api_error", false, true);
             }
             if (!releaseRes.ok) {
                 return setResponse(config.comment.command.invalidTaskState, "request_release_failed");
@@ -172,18 +181,56 @@ interface UserReq {
 }
 
 interface VerifyStuRes {
-    success: true,
+    success: boolean,
     student_name?: string
     contract_deadline?: string,
 }
 
+type PortalEligibilityResponse = {
+    eligible?: boolean;
+    student?: {
+        fullName?: string;
+        contractEndAt?: string;
+    } | null;
+};
+
 async function verifyStudentIdentity(login: string, scmProvider: Payload["scmProvider"]) {
-    const apiUrl = `${process.env.API_ENDPOINT}/student/validate`;
-    const body: UserReq & ScmBackendRequestFields = mergeBackendProviderOnly({ login }, scmProvider);
-    const apiRes = await postData<VerifyStuRes, typeof body>(apiUrl, body);
+    const portalBase = (process.env.PORTAL_ENDPOINT ?? "").trim().replace(/\/+$/, "");
+    if (portalBase === "") {
+        return {
+            data: null as VerifyStuRes | null,
+            apiError: true,
+        };
+    }
+    const queryKey = scmProvider === "atomgit" ? "atomgitUsername" : "githubUsername";
+    const query = new URLSearchParams({ [queryKey]: login });
+    const apiUrl = `${portalBase}/api/integration/openatom/students/eligibility?${query.toString()}`;
+    const authToken = (process.env.OPENATOM_INTEGRATION_TOKEN ?? "").trim();
+    const headers: HeadersInit = authToken === "" ? {} : { Authorization: `Bearer ${authToken}` };
+    let payload: PortalEligibilityResponse;
+    try {
+        const res = await fetch(apiUrl, { headers });
+        if (!res.ok) {
+            return {
+                data: null as VerifyStuRes | null,
+                apiError: true,
+            };
+        }
+        payload = (await res.json()) as PortalEligibilityResponse;
+    } catch {
+        return {
+            data: null as VerifyStuRes | null,
+            apiError: true,
+        };
+    }
+    const mapped: VerifyStuRes = {
+        success: payload.eligible === true,
+        student_name: payload.student?.fullName,
+        contract_deadline: payload.student?.contractEndAt,
+    };
     return {
-        data: apiRes.data ?? null,
-        apiError: isBackendApiError(apiRes),
+        data: mapped,
+        apiError: false,
     };
 }
 
@@ -204,7 +251,7 @@ async function requestAssign(req: CommandRequest, task: Task, scmProvider: Paylo
     const body = mergeBackendWithTask(req, scmProvider, task);
     const apiRes = await postData<boolean, typeof body>(apiUrl, body);
     return {
-        ok: apiRes.data === true,
+        ok: isCommandApiDataSuccess(apiRes),
         apiError: isBackendApiError(apiRes),
         message: apiRes.message,
     } as TaskApiResult;
@@ -244,7 +291,7 @@ export async function releaseTask(req: CommandRequest, scm: ScmClient, payload: 
     const body = mergeBackendWithTask(req, scmProvider, task);
     const apiRes = await postData<boolean, typeof body>(apiUrl, body);
     return {
-        ok: apiRes.data === true,
+        ok: isCommandApiDataSuccess(apiRes),
         apiError: isBackendApiError(apiRes),
         message: apiRes.message,
     } as TaskApiResult;
@@ -259,7 +306,7 @@ async function requestComplete(
     const body = mergeBackendWithTask(req, scmProvider, task);
     const apiRes = await postData<boolean, typeof body>(apiUrl, body);
     return {
-        ok: apiRes.data === true,
+        ok: isCommandApiDataSuccess(apiRes),
         apiError: isBackendApiError(apiRes),
         message: apiRes.message,
     } as TaskApiResult;

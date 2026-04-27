@@ -81,6 +81,6 @@ jobs:
       #       -p 3000:3000 --restart=always \
       #       public.ecr.aws/m8q5m4u3/r2cn/bot:latest
       #       # Atomgit (when enabled): add GitHub repo secrets and uncomment, e.g.
-      #       # -e ATOMGIT_WEBHOOK_SECRET=${{ secrets.ATOMGIT_WEBHOOK_SECRET }} \
+      #       # -e PORTAL_ENDPOINT=${{ secrets.PORTAL_ENDPOINT }} \
       #       # -e ATOMGIT_API_BASE=${{ secrets.ATOMGIT_API_BASE }} \
       #       # -e ATOMGIT_TOKEN=${{ secrets.ATOMGIT_TOKEN }} \

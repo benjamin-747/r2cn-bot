@@ -229,13 +229,13 @@ src/
 
 | 变量 | 用途 |
 |------|------|
-| **`ATOMGIT_WEBHOOK_SECRET`** | Atomgit Webhook 验签密钥（具体算法与 Header 以官方文档为准） |
+| **`PORTAL_ENDPOINT`** | Portal 服务根地址；按 owner 从 `/api/integration/open-source-orgs/webhook-tokens` 拉取 Atomgit webhook token 并缓存 |
 | **`ATOMGIT_API_BASE`** | Atomgit OpenAPI 根 URL（例如 `https://api.atomgit.com/api/v5`，无尾斜杠）。发评论走 `POST /repos/:owner/:repo/issues/:number/comments`。 |
 | **`ATOMGIT_TOKEN`** | 调用 Atomgit API 的 token（或按组织拆为多 token，再增加 `ATOMGIT_TOKEN_*`） |
 
 #### 6.3.4 运维与对齐说明
 
-- **密钥轮换**：`WEBHOOK_SECRET` / `ATOMGIT_WEBHOOK_SECRET` 与平台控制台配置需同步更新。
+- **密钥轮换**：`WEBHOOK_SECRET` 与平台控制台配置需同步更新；Atomgit webhook token 由 portal 维护。
 - **文档维护**：实现落地后，将**最终**变量名与是否必填同步到 README 或运维 runbook；本文档第 6.3 节作为设计期清单，可与代码 `process.env` 使用处交叉引用。
 
 ---

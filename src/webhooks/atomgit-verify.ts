@@ -17,7 +17,7 @@ function header(
 }
 
 /**
- * Verify Atomgit webhook by comparing `X-GitCode-Token` to `ATOMGIT_WEBHOOK_SECRET` (timing-safe).
+ * Verify Atomgit webhook by comparing `X-GitCode-Token` to the resolved owner token (timing-safe).
  */
 export function verifyAtomgitWebhookRequest(opts: {
     headers: NodeJS.Dict<string | string[] | undefined>;

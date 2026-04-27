@@ -1,8 +1,33 @@
 import * as Task from "../task/index.js";
-import { loadBotConfig } from "../config/load-bot-config.js";
+import { loadCommentConfig } from "../config/load-comment-config.js";
+import { loadMentorLimitsFromPortal } from "../config/load-mentor-limits.js";
+import { loadOpenSourceInternshipConfigFromPortal } from "../config/load-open-source-internship-config.js";
 import type { IssueLabeled } from "../canonical/events.js";
 import type { WebhookRuntimeDeps } from "../scm/handler-deps.js";
 import { scmProjectOptsFromRepo } from "./scm-project-opts.js";
+
+const API_UNAVAILABLE_COMMENT_LOG_MARKER = "api_unavailable_comment_emit_v1";
+
+function logApiUnavailableCommentEmit(
+    deps: WebhookRuntimeDeps,
+    event: IssueLabeled,
+    source: string,
+    apiMessage?: string,
+): void {
+    deps.log.warn(
+        {
+            marker: API_UNAVAILABLE_COMMENT_LOG_MARKER,
+            source,
+            provider: event.repo.provider,
+            repoFullName: event.repo.fullName,
+            issueNumber: event.issue.number,
+            issueInternalId: event.issue.id,
+            labelName: event.label?.name ?? "",
+            apiMessage: apiMessage ?? "",
+        },
+        "emit apiUnavailable comment",
+    );
+}
 
 /**
  * `issues.labeled` domain logic — only {@link IssueLabeled}, `ScmClient`, and config (docs §8.5).
@@ -13,30 +38,49 @@ export async function onIssueLabeled(
 ): Promise<void> {
     const { scm, log } = deps;
     const repoFullName = event.repo.fullName;
+    const internshipConfig = await loadOpenSourceInternshipConfigFromPortal(log);
+    if (internshipConfig == null) {
+        logApiUnavailableCommentEmit(deps, event, "portal_internship_config");
+        const comment = await loadCommentConfig(log, repoFullName);
+        if (comment != null) {
+            await scm.createIssueComment({
+                owner: event.repo.owner,
+                repo: event.repo.name,
+                issueNumber: event.issue.number,
+                body: comment.system.apiUnavailable,
+                ...scmProjectOptsFromRepo(event.repo),
+            });
+        }
+        return;
+    }
+    const scorePrefix = `${internshipConfig.tagPrefix}-`;
+    const completeLabel = `${internshipConfig.tagPrefix}-complete`;
     const label = event.label;
     const labeled =
-        label?.name.startsWith("r2cn-") && label?.name != "r2cn-complete";
+        label?.name.startsWith(scorePrefix) && label?.name !== completeLabel;
     if (!labeled) {
         log.info(
             {
-                handlerDecision: "skip_not_r2cn_score_label",
+                handlerDecision: "skip_not_score_prefix_label",
                 labelName: label?.name ?? "(none)",
                 repoFullName,
                 issueNumber: event.issue.number,
+                tagPrefix: internshipConfig.tagPrefix,
             },
-            "onIssueLabeled: no r2cn-* score label on this event",
+            "onIssueLabeled: no <tagPrefix>-* score label on this event",
         );
         return;
     }
 
-    const config = await loadBotConfig(scm, log, repoFullName);
-    if (config == null) {
+    const comment = await loadCommentConfig(log, repoFullName);
+    if (comment == null) {
         log.error(
             { handlerDecision: "abort_config_null", repoFullName },
-            "onIssueLabeled: loadBotConfig failed",
+            "onIssueLabeled: loadCommentConfig failed",
         );
         return;
     }
+    const config = { comment, approvedRepositories: [] };
 
     const owner = event.repo.owner;
     const repoName = event.repo.name;
@@ -44,57 +88,65 @@ export async function onIssueLabeled(
     const p = scmProjectOptsFromRepo(event.repo);
 
     const multi_label: boolean =
-        event.labels.filter((l) => l.name.startsWith("r2cn-")).length > 1;
+        event.labels.filter((l) => l.name.startsWith(scorePrefix) && l.name !== completeLabel).length > 1;
     if (multi_label) {
         log.info(
             {
-                handlerDecision: "reply_multi_r2cn_labels",
+                handlerDecision: "reply_multi_score_prefix_labels",
                 repoFullName,
                 issueNumber,
-                r2cnLabelCount: event.labels.filter((l) => l.name.startsWith("r2cn-")).length,
+                scoreLabelCount: event.labels.filter((l) => l.name.startsWith(scorePrefix) && l.name !== completeLabel).length,
+                tagPrefix: internshipConfig.tagPrefix,
             },
-            "onIssueLabeled: multiple r2cn-* labels → posting multiScore message",
+            "onIssueLabeled: multiple <tagPrefix>-* labels → posting multiScore message",
         );
         await scm.createIssueComment({
             owner,
             repo: repoName,
             issueNumber,
-            body: config.comment.task.multiScoreLabel,
+            body: comment.task.multiScoreLabel,
             ...p,
         });
         return;
     }
 
-    const repoCfg = config.approvedRepositories.find((r) => r.name === repoFullName);
-    log.info(
-        {
-            repoFullName,
-            matchedApprovedRepository: repoCfg != null,
-        },
-        "approved repository filter result",
-    );
-    if (!repoCfg) {
+    const mentorLimits = await loadMentorLimitsFromPortal(log, {
+        platform: event.repo.provider,
+        owner,
+        repo: repoName,
+    });
+    if (!mentorLimits.ok && mentorLimits.notFound) {
         log.info(
             {
                 handlerDecision: "reply_repo_not_in_approved_list",
                 repoFullName,
                 issueNumber,
-                approvedRepositoryCount: config.approvedRepositories.length,
             },
-            "onIssueLabeled: repo not in r2cn.yaml approvedRepositories → noneProjectComment",
+            "onIssueLabeled: repo not in portal mentor limits → noneProjectComment",
         );
         await scm.createIssueComment({
             owner,
             repo: repoName,
             issueNumber,
-            body: config.comment.project.noneProjectComment,
+            body: comment.project.noneProjectComment,
+            ...p,
+        });
+        return;
+    }
+    if (!mentorLimits.ok) {
+        logApiUnavailableCommentEmit(deps, event, "portal_mentor_limits");
+        await scm.createIssueComment({
+            owner,
+            repo: repoName,
+            issueNumber,
+            body: comment.system.apiUnavailable,
             ...p,
         });
         return;
     }
 
     const creator = event.issueAuthor?.login ?? "";
-    const maintainer = repoCfg.maintainers.find((m) => m.id === creator);
+    const maintainer = mentorLimits.maintainers.find((m) => m.id === creator);
     if (!maintainer) {
         log.info(
             {
@@ -102,7 +154,7 @@ export async function onIssueLabeled(
                 repoFullName,
                 issueNumber,
                 creatorLogin: creator || "(empty)",
-                maintainerIds: repoCfg.maintainers.map((m) => m.id),
+                maintainerIds: mentorLimits.maintainers.map((m) => m.id),
             },
             "onIssueLabeled: issue author not in maintainer list → noneMaintainerComment",
         );
@@ -110,7 +162,7 @@ export async function onIssueLabeled(
             owner,
             repo: repoName,
             issueNumber,
-            body: config.comment.project.noneMaintainerComment,
+            body: comment.project.noneMaintainerComment,
             ...p,
         });
         return;
@@ -125,14 +177,15 @@ export async function onIssueLabeled(
                 repoFullName,
                 issueNumber,
                 labelName: label?.name,
+                tagPrefix: internshipConfig.tagPrefix,
             },
-            "onIssueLabeled: r2cn-* label has no numeric suffix → scoreUndefinedComment",
+            "onIssueLabeled: <tagPrefix>-* label has no numeric suffix → scoreUndefinedComment",
         );
         await scm.createIssueComment({
             owner,
             repo: repoName,
             issueNumber,
-            body: config.comment.task.scoreUndefinedComment,
+            body: comment.task.scoreUndefinedComment,
             ...p,
         });
         return;
@@ -154,7 +207,7 @@ export async function onIssueLabeled(
             owner,
             repo: repoName,
             issueNumber,
-            body: config.comment.task.scoreInvalidComment,
+            body: comment.task.scoreInvalidComment,
             ...p,
         });
         return;
@@ -174,11 +227,12 @@ export async function onIssueLabeled(
                 },
                 "onIssueLabeled: task lookup API failed → apiUnavailable",
             );
+            logApiUnavailableCommentEmit(deps, event, "task_lookup", taskLookup.message);
             await scm.createIssueComment({
                 owner,
                 repo: repoName,
                 issueNumber,
-                body: config.comment.task.apiUnavailable,
+                body: comment.system.apiUnavailable,
                 ...p,
             });
             return;
@@ -222,7 +276,7 @@ export async function onIssueLabeled(
                     owner,
                     repo: repoName,
                     issueNumber,
-                    body: config.comment.task.success,
+                    body: comment.task.success,
                     ...p,
                 });
             } else {
@@ -236,13 +290,16 @@ export async function onIssueLabeled(
                     },
                     "onIssueLabeled: checkTask passed but newTask returned false",
                 );
+                if (newTaskRes.apiError) {
+                    logApiUnavailableCommentEmit(deps, event, "new_task", newTaskRes.message);
+                }
                 await scm.createIssueComment({
                     owner,
                     repo: repoName,
                     issueNumber,
                     body: newTaskRes.apiError
-                        ? config.comment.task.apiUnavailable
-                        : config.comment.command.invalidTaskState,
+                        ? comment.system.apiUnavailable
+                        : comment.command.invalidTaskState,
                     ...p,
                 });
             }
@@ -255,11 +312,14 @@ export async function onIssueLabeled(
                 },
                 "onIssueLabeled: checkTask failed → posting check message",
             );
+            if (checkRes.apiError) {
+                logApiUnavailableCommentEmit(deps, event, "check_task", checkRes.message);
+            }
             await scm.createIssueComment({
                 owner,
                 repo: repoName,
                 issueNumber,
-                body: checkRes.apiError ? config.comment.task.apiUnavailable : checkRes.message,
+                body: checkRes.apiError ? comment.system.apiUnavailable : checkRes.message,
                 ...p,
             });
         }
@@ -278,7 +338,7 @@ export async function onIssueLabeled(
                 owner,
                 repo: repoName,
                 issueNumber,
-                body: config.comment.task.notAllowedModify,
+                body: comment.task.notAllowedModify,
                 ...p,
             });
         } else {
@@ -293,13 +353,16 @@ export async function onIssueLabeled(
             );
             const updateRes = await Task.updateTaskScore(event.issue, score, event.repo.provider);
             if (!updateRes.ok) {
+                if (updateRes.apiError) {
+                    logApiUnavailableCommentEmit(deps, event, "update_task_score", updateRes.message);
+                }
                 await scm.createIssueComment({
                     owner,
                     repo: repoName,
                     issueNumber,
                     body: updateRes.apiError
-                        ? config.comment.task.apiUnavailable
-                        : config.comment.command.invalidTaskState,
+                        ? comment.system.apiUnavailable
+                        : comment.command.invalidTaskState,
                     ...p,
                 });
                 return;
@@ -308,7 +371,7 @@ export async function onIssueLabeled(
                 owner,
                 repo: repoName,
                 issueNumber,
-                body: `${config.comment.task.successUpdate.trim()}: ${score}`,
+                body: `${comment.task.successUpdate.trim()}: ${score}`,
                 ...p,
             });
         }

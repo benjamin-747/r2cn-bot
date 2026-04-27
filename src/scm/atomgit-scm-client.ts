@@ -1,4 +1,5 @@
-import type { RepositoryFileContent, ScmClient } from "./types.js";
+import { logBotIssueReply } from "./log-bot-reply.js";
+import type { ScmClient } from "./types.js";
 
 type ProjectInput = { owner: string; repo: string; projectId?: number };
 
@@ -16,7 +17,6 @@ export class AtomgitScmClient implements ScmClient {
     private readonly baseUrl: string;
     private readonly token: string;
     private readonly apiVersion: string;
-    private readonly defaultBranch: string;
 
     constructor() {
         const base = process.env.ATOMGIT_API_BASE?.replace(/\/+$/, "") ?? "";
@@ -30,7 +30,6 @@ export class AtomgitScmClient implements ScmClient {
         this.baseUrl = base;
         this.token = token;
         this.apiVersion = process.env.ATOMGIT_API_VERSION ?? "2023-02-21";
-        this.defaultBranch = process.env.ATOMGIT_DEFAULT_BRANCH ?? "main";
     }
 
     private projectRef(input: ProjectInput): string {
@@ -119,6 +118,12 @@ export class AtomgitScmClient implements ScmClient {
         body: string;
         projectId?: number;
     }): Promise<void> {
+        logBotIssueReply({
+            owner: input.owner,
+            repo: input.repo,
+            issueNumber: input.issueNumber,
+            body: input.body,
+        });
         const res = await this.request(
             "POST",
             this.issueCommentsPath(input.owner, input.repo, input.issueNumber),
@@ -129,26 +134,6 @@ export class AtomgitScmClient implements ScmClient {
                 `Atomgit createIssueComment failed: ${res.status} ${await res.text()}`,
             );
         }
-    }
-
-    async getRepositoryContent(input: {
-        owner: string;
-        repo: string;
-        path: string;
-        projectId?: number;
-    }): Promise<RepositoryFileContent | null> {
-        const pid = this.projectRef(input);
-        const file = encodeURIComponent(input.path);
-        const ref = encodeURIComponent(this.defaultBranch);
-        const res = await fetch(
-            `${this.baseUrl}/projects/${pid}/repository/files/${file}/raw?ref=${ref}`,
-            { headers: { Authorization: `Bearer ${this.token}`, "X-Api-Version": this.apiVersion } },
-        );
-        if (!res.ok) {
-            return null;
-        }
-        const content = await res.text();
-        return { content };
     }
 
     async removeLabel(input: {
@@ -256,11 +241,12 @@ export class AtomgitScmClient implements ScmClient {
         issueNumber: number;
         projectId?: number;
     }): Promise<void> {
-        const pid = this.projectRef(input);
+        // AtomGit v5: reset issue labels via the same labels endpoint.
+        // Using an empty array clears all labels on the issue.
         const res = await this.request(
             "PUT",
-            `/projects/${pid}/issues/${input.issueNumber}`,
-            { labels: [] },
+            this.issueLabelsPath(input.owner, input.repo, input.issueNumber),
+            [],
         );
         if (!res.ok) {
             throw new Error(

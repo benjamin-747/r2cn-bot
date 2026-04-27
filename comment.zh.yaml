@@ -1,8 +1,14 @@
 project:
   noneProjectComment: >
-    欢迎参与R2CN项目,在开始之前您需要先提交一个PR, 详情可参考文档 https://r2cn.dev/docs/project/signup
+    欢迎参与R2CN项目,在开始之前您需要先去 portal 申请项目注册和导师资格录入，详情可参考文档 https://r2cn.dev/docs/project/signup
   noneMaintainerComment: >
-    您当前没有权限来创建R2CN任务,请联系您仓库或者组织管理员提交PR将您的GitHub ID加入r2cn.yaml文件,参考 https://r2cn.dev/docs/project/mentor-and-tasks/mentor
+    您当前没有权限来创建R2CN任务,请联系开源实习方将您的信息维护到系统中.
+
+system:
+  apiUnavailable: >
+    当前后端 API 服务不可用，请稍后重试。
+  webhookTokenMismatch: >
+    项目注册失败，请联系管理员处理。
 
 task:
   success: >
@@ -12,13 +18,11 @@ task:
   notAllowedModify: >
     任务完成后无法修改分值等信息.
   taskNotFound: >
-    任务还未创建,需要使用“R2CN-分值”标签先创建任务.
-  apiUnavailable: >
-    当前后端 API 服务不可用，请稍后重试。
+    任务还未创建,需要使用“系统管理员配置的标签前缀-分值”标签先创建任务.
   scoreUndefinedComment: >
-    请使用“R2CN-分值”标签来创建任务,当前标签的分值不正确.
+    请使用“系统管理员配置的标签前缀-分值”标签来创建任务,当前标签的分值不正确.
   scoreInvalidComment: >
-    R2CN-分值超出组织管理员配置的上限,或者分值小于2.
+    系统管理员配置的标签前缀-分值超出组织管理员配置的上限,或者分值小于2.
   multiScoreLabel: >
     只能拥有一个分值标签,请先移除所有r2cn-分数标签,然后再选择1个r2cn-分数标签来新建任务.
   userToomanyTask: >
@@ -38,7 +42,7 @@ requestAssign:
   success: >
     认领成功: 等待导师审核,请及时联系导师进行审核.
   waitingInfoReview: >
-    认领失败: 请先在 https://summer-ospp.ac.cn/r2cnLogin 进行学生注册并通过审核后才能认领任务.
+    认领失败: 请先在 https://internship.xuanwu.openatom.cn/zh-CN/signin 进行学生注册并通过审核后才能认领任务.
   waitingContract: >
     认领失败: 合同未签署,如果已经确认签署请在 R2CN Discord(https://discord.gg/WRp4TKv6rh) 的 #signup-student 频道联系管理员更新合同签署状态.
   existTask: >

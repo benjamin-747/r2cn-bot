@@ -1,4 +1,4 @@
-export type { ScmClient, RepositoryFileContent } from "./types.js";
+export type { ScmClient } from "./types.js";
 export type { ScmHandlerDeps, WebhookRuntimeDeps } from "./handler-deps.js";
 export { GitHubScmClient } from "./github-scm-client.js";
 export { AtomgitScmClient } from "./atomgit-scm-client.js";

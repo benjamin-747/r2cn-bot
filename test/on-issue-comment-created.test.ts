@@ -37,32 +37,7 @@ describe("onIssueCommentCreated (phase 5)", () => {
         });
         expect(event).not.toBeNull();
 
-        const r2cnYaml = fs.readFileSync(
-            path.join(__dirname, "fixtures/config/minimal-r2cn.yaml"),
-            "utf8",
-        );
-        const commentYaml = fs.readFileSync(
-            path.join(__dirname, "fixtures/config/minimal-comment.yaml"),
-            "utf8",
-        );
-
         const scm = createMockScmClient();
-        vi.stubGlobal(
-            "fetch",
-            vi.fn(async () => ({
-                ok: true,
-                json: async () => ({
-                    content: Buffer.from(r2cnYaml, "utf8").toString("base64"),
-                    encoding: "base64",
-                }),
-            })),
-        );
-        vi.mocked(scm.getRepositoryContent).mockImplementation(async (input) => {
-            if (input.repo === "r2cn-bot" && input.path.endsWith(".yaml")) {
-                return { content: commentYaml };
-            }
-            return null;
-        });
 
         vi.spyOn(Task, "getTaskLookup").mockResolvedValue({
             task: {

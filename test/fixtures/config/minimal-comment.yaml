@@ -1,6 +1,9 @@
 project:
   noneProjectComment: "np"
   noneMaintainerComment: "nm"
+system:
+  apiUnavailable: "au"
+  webhookTokenMismatch: "wtm"
 task:
   success: "s"
   successUpdate: "su"

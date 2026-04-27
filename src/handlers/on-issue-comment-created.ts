@@ -1,10 +1,35 @@
 import * as Task from "../task/index.js";
-import { loadBotConfig } from "../config/load-bot-config.js";
+import { loadCommentConfig } from "../config/load-comment-config.js";
 import type { IssueCommentCreated } from "../canonical/events.js";
 import type { WebhookRuntimeDeps } from "../scm/handler-deps.js";
 import * as Student from "../student/index.js";
 import { handle_mentor_cmd } from "../mentor/index.js";
 import { scmProjectOptsFromRepo } from "./scm-project-opts.js";
+
+const API_UNAVAILABLE_COMMENT_LOG_MARKER = "api_unavailable_comment_emit_v1";
+
+function logApiUnavailableCommentEmit(
+    deps: WebhookRuntimeDeps,
+    event: IssueCommentCreated,
+    command: string,
+    source: string,
+    apiMessage?: string,
+): void {
+    deps.log.warn(
+        {
+            marker: API_UNAVAILABLE_COMMENT_LOG_MARKER,
+            source,
+            provider: event.repo.provider,
+            repoFullName: event.repo.fullName,
+            issueNumber: event.issue.number,
+            issueInternalId: event.issue.id,
+            actorLogin: event.actor.login,
+            commandPreview: command.slice(0, 80),
+            apiMessage: apiMessage ?? "",
+        },
+        "emit apiUnavailable comment",
+    );
+}
 
 /**
  * `issue_comment.created` domain logic (docs §8.5).
@@ -14,6 +39,7 @@ export async function onIssueCommentCreated(
     deps: WebhookRuntimeDeps,
 ): Promise<void> {
     const { scm, log } = deps;
+    const command = event.body.trim();
 
     if (event.isBot) {
         log.info(
@@ -28,11 +54,16 @@ export async function onIssueCommentCreated(
         return;
     }
 
-    const config = await loadBotConfig(scm, log, event.repo.fullName);
-    if (config == null) {
+    // Ignore non-command comments early to avoid noisy logs and extra API/config work.
+    if (!command.startsWith("/")) {
+        return;
+    }
+
+    const comment = await loadCommentConfig(log, event.repo.fullName);
+    if (comment == null) {
         log.error(
             { handlerDecision: "abort_config_null", repoFullName: event.repo.fullName },
-            "onIssueCommentCreated: loadBotConfig failed",
+            "onIssueCommentCreated: loadCommentConfig failed",
         );
         return;
     }
@@ -41,11 +72,6 @@ export async function onIssueCommentCreated(
     const repoName = event.repo.name;
     const issueNumber = event.issue.number;
     const p = scmProjectOptsFromRepo(event.repo);
-
-    const command = event.body.trim();
-    if (!command.startsWith("/")) {
-        return;
-    }
 
     const taskLookup = await Task.getTaskLookup(event.issue.id, event.repo.provider);
     const task = taskLookup.task;
@@ -62,11 +88,12 @@ export async function onIssueCommentCreated(
                 },
                 "onIssueCommentCreated: task lookup API failed; posting apiUnavailable",
             );
+            logApiUnavailableCommentEmit(deps, event, command, "task_lookup", taskLookup.message);
             await scm.createIssueComment({
                 owner,
                 repo: repoName,
                 issueNumber,
-                body: config.comment.task.apiUnavailable,
+                body: comment.system.apiUnavailable,
                 ...p,
             });
             return;
@@ -85,7 +112,7 @@ export async function onIssueCommentCreated(
             owner,
             repo: repoName,
             issueNumber,
-            body: config.comment.task.taskNotFound,
+            body: comment.task.taskNotFound,
             ...p,
         });
         if (command.startsWith("/request")) {
@@ -112,7 +139,7 @@ export async function onIssueCommentCreated(
             },
             "onIssueCommentCreated: /request* → handle_stu_cmd",
         );
-        const res = await Student.handle_stu_cmd(scm, config, {
+        const res = await Student.handle_stu_cmd(scm, { comment, approvedRepositories: [] }, {
             actor: event.actor,
             command,
             issue: event.issue,
@@ -121,11 +148,12 @@ export async function onIssueCommentCreated(
             scmProvider: event.repo.provider,
         });
         if (res.apiError) {
+            logApiUnavailableCommentEmit(deps, event, command, "student_command", res.message);
             await scm.createIssueComment({
                 owner,
                 repo: repoName,
                 issueNumber,
-                body: config.comment.task.apiUnavailable,
+                body: comment.system.apiUnavailable,
                 ...p,
             });
             return;
@@ -147,7 +175,7 @@ export async function onIssueCommentCreated(
             },
             "onIssueCommentCreated: /intern* → handle_mentor_cmd",
         );
-        const res = await handle_mentor_cmd(scm, config, {
+        const res = await handle_mentor_cmd(scm, { comment, approvedRepositories: [] }, {
             actor: event.actor,
             command,
             issue: event.issue,
@@ -156,11 +184,12 @@ export async function onIssueCommentCreated(
             scmProvider: event.repo.provider,
         });
         if (res.apiError) {
+            logApiUnavailableCommentEmit(deps, event, command, "mentor_command", res.message);
             await scm.createIssueComment({
                 owner,
                 repo: repoName,
                 issueNumber,
-                body: config.comment.task.apiUnavailable,
+                body: comment.system.apiUnavailable,
                 ...p,
             });
             return;
