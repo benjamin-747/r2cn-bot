@@ -38,16 +38,13 @@ Configure the repository webhook URL to **`POST https://<host>:<port>/webhooks/a
 
 | Variable | Description |
 |----------|-------------|
-| `ATOMGIT_WEBHOOK_SECRET` | Webhook secret: compared to `X-Gitlab-Token` / `X-AtomGit-Token` (default), or used for HMAC (see `ATOMGIT_WEBHOOK_VERIFY_MODE`). If unset, the route responds `200` with `{ ok: false }` and does not process payloads (avoids retry storms). |
-| `ATOMGIT_WEBHOOK_VERIFY_MODE` | `token` (default) or `hmac-sha256` (compare `X-AtomGit-Signature` / `X-Gitlab-Signature` as `sha256=<hex>` of raw body). |
+| `PORTAL_ENDPOINT` | Portal base URL. Atomgit webhook verification token is fetched by owner from `/api/integration/open-source-orgs/webhook-tokens` and cached for 5 minutes. |
+| `OPENATOM_INTEGRATION_TOKEN` | Bearer token used in `Authorization` header when calling portal openatom integration APIs. |
 | `ATOMGIT_API_BASE` | REST root for OpenAPI calls, e.g. `https://api.atomgit.com/api/v5`. Writes: comments `POST .../repos/:owner/:repo/issues/:number/comments`; labels `POST .../labels` (JSON **array of strings**); close/reopen issue uses `GET .../repos/:owner/:repo/issues/:number` then `PATCH .../repos/:owner/issues/:number` with **`application/x-www-form-urlencoded`** (`repo`, `title`, `body`, `state=close|reopen`) per [AtomGit](https://docs.atomgit.com/docs/apis/patch-api-v-5-repos-owner-issues-number). Required when handling Atomgit webhooks that need `AtomgitScmClient`. |
 | `ATOMGIT_TOKEN` | `Authorization: Bearer` token for OpenAPI. |
 | `ATOMGIT_API_VERSION` | Optional; default `2023-02-21` (`X-Api-Version` header). |
-| `ATOMGIT_DEFAULT_BRANCH` | Optional; default `main` — used for `getRepositoryContent` raw file reads. |
 
 **Payload mapping** (see `src/webhooks/map-atomgit-to-canonical.ts`): `Note Hook` / `object_kind: note` on an **Issue** → `IssueCommentCreated`; **Issue Hook** → `IssueLabeled` when (1) `action: update` and `changes.labels` has **at least one** new label, or (2) **`action: open`** and labels (on `object_attributes` or top-level `issue`) already include an **`r2cn-*`** score label (create-issue-with-labels). Other events are acknowledged with **200** and a debug log (no handler).
-
-**Config YAML**: `loadBotConfig` still reads `r2cn-dev/...` via `ScmClient.getRepositoryContent`. On Atomgit-only installs, that path must exist on the same instance or you need a separate config strategy (docs §7).
 
 ## Docker
 

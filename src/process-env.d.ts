@@ -8,20 +8,16 @@ declare global {
             /** r2cn HTTP API base (existing). */
             API_ENDPOINT?: string;
 
-            /** Atomgit webhook verification secret (phase 4+). */
-            ATOMGIT_WEBHOOK_SECRET?: string;
             /** Atomgit OpenAPI base URL (phase 4+). */
             ATOMGIT_API_BASE?: string;
             /** Atomgit API token (phase 4+). */
             ATOMGIT_TOKEN?: string;
             /** OpenAPI version header (default `2023-02-21`). */
             ATOMGIT_API_VERSION?: string;
-            /** Default ref for raw file reads (`getRepositoryContent`). */
-            ATOMGIT_DEFAULT_BRANCH?: string;
-            /** Config repository owner (default `r2cn-dev`). */
-            CONFIG_REPO_OWNER?: string;
-            /** Config repository name (default `r2cn`). */
-            CONFIG_REPO_NAME?: string;
+            /** Portal server base URL for mentor limits API. */
+            PORTAL_ENDPOINT?: string;
+            /** Bearer token for openatom integration APIs on portal. */
+            OPENATOM_INTEGRATION_TOKEN?: string;
         }
     }
 }

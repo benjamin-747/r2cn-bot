@@ -3,11 +3,6 @@
  * @see docs/dual-webhook-scm-architecture.md §5
  */
 
-/** Decoded UTF-8 file body from `getRepositoryContent`. */
-export type RepositoryFileContent = {
-    content: string;
-};
-
 /** Optional GitLab/Atomgit numeric project id; GitHub client ignores it. */
 export type ScmProjectOpts = {
     projectId?: number;
@@ -22,15 +17,6 @@ export interface ScmClient {
             body: string;
         } & ScmProjectOpts,
     ): Promise<void>;
-
-    /** Read a single file from a repository (e.g. org-wide `r2cn.yaml`). */
-    getRepositoryContent(
-        input: {
-            owner: string;
-            repo: string;
-            path: string;
-        } & ScmProjectOpts,
-    ): Promise<RepositoryFileContent | null>;
 
     removeLabel(
         input: {

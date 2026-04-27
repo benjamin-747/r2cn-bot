@@ -30,6 +30,5 @@ describe("onIssueLabeled (phase 3)", () => {
         await onIssueLabeled(event!, { scm, log });
 
         expect(scm.createIssueComment).not.toHaveBeenCalled();
-        expect(scm.getRepositoryContent).not.toHaveBeenCalled();
     });
 });

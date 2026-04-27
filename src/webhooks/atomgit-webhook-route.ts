@@ -8,10 +8,12 @@ import {
     atomgitWebhookToCanonical,
 } from "./map-atomgit-to-canonical.js";
 import { verifyAtomgitWebhookRequest } from "./atomgit-verify.js";
+import { loadAtomgitWebhookTokenByOwner } from "./atomgit-webhook-token-cache.js";
 import { extractAtomgitDeliveryId } from "./atomgit-delivery-id.js";
 import { normalizeDeliveryId } from "./github-webhook-log.js";
 import { createScmClient } from "../scm/create-scm-client.js";
 import type { ScmClient } from "../scm/types.js";
+import { loadCommentConfig } from "../config/load-comment-config.js";
 
 function atomgitEventHeader(req: Request): string {
     const h = req.headers;
@@ -62,6 +64,112 @@ function requestBodyForLog(body: Record<string, unknown>): Record<string, unknow
     };
 }
 
+function isNonCommandCommentEvent(eventHeader: string, body: Record<string, unknown>): boolean {
+    const normalizedHeader = eventHeader.trim().toLowerCase();
+    const objectKind = String(body.object_kind ?? "").trim().toLowerCase();
+    const eventType = String(body.event_type ?? "").trim().toLowerCase();
+    const action = String(body.action ?? "").trim().toLowerCase();
+    const isCommentLikeEvent =
+        normalizedHeader === "note" ||
+        objectKind === "note" ||
+        eventType === "note" ||
+        action === "note";
+    if (!isCommentLikeEvent) {
+        return false;
+    }
+    const oa = body.object_attributes;
+    if (oa == null || typeof oa !== "object") {
+        return false;
+    }
+    const note = String((oa as { note?: unknown }).note ?? "").trim();
+    return note !== "" && !note.startsWith("/");
+}
+
+function ownerFromAtomgitBody(body: Record<string, unknown>): string {
+    const project = body.project as { path_with_namespace?: unknown; namespace?: unknown } | undefined;
+    const pathWithNamespace = String(project?.path_with_namespace ?? "").trim();
+    if (pathWithNamespace.includes("/")) {
+        return pathWithNamespace.slice(0, pathWithNamespace.indexOf("/"));
+    }
+    const namespace = String(project?.namespace ?? "").trim();
+    if (namespace !== "") {
+        return namespace;
+    }
+    return "";
+}
+
+function repoNameFromAtomgitBody(body: Record<string, unknown>): string {
+    const project = body.project as { path_with_namespace?: unknown; name?: unknown } | undefined;
+    const pathWithNamespace = String(project?.path_with_namespace ?? "").trim();
+    if (pathWithNamespace.includes("/")) {
+        return pathWithNamespace.slice(pathWithNamespace.indexOf("/") + 1);
+    }
+    return String(project?.name ?? "").trim();
+}
+
+function issueNumberFromAtomgitBody(body: Record<string, unknown>): number | null {
+    const issue = body.issue as { iid?: unknown; number?: unknown } | undefined;
+    const iid = issue?.iid;
+    if (typeof iid === "number" && Number.isFinite(iid)) {
+        return iid;
+    }
+    if (typeof iid === "string" && iid.trim() !== "" && Number.isFinite(Number(iid))) {
+        return Number(iid);
+    }
+    const number = issue?.number;
+    if (typeof number === "number" && Number.isFinite(number)) {
+        return number;
+    }
+    return null;
+}
+
+async function postSystemCommentFromBody(
+    log: Logger,
+    body: Record<string, unknown>,
+    kind: "apiUnavailable" | "webhookTokenMismatch",
+): Promise<void> {
+    const owner = ownerFromAtomgitBody(body);
+    const repo = repoNameFromAtomgitBody(body);
+    const issueNumber = issueNumberFromAtomgitBody(body);
+    if (owner === "" || repo === "" || issueNumber == null) {
+        return;
+    }
+    const repoFullName = `${owner}/${repo}`;
+    const comment = await loadCommentConfig(log, repoFullName);
+    if (comment == null) {
+        return;
+    }
+    let scm: ScmClient;
+    try {
+        scm = createScmClient({ provider: "atomgit" });
+    } catch {
+        return;
+    }
+    const message =
+        kind === "apiUnavailable" ? comment.system.apiUnavailable : comment.system.webhookTokenMismatch;
+    try {
+        await scm.createIssueComment({ owner, repo, issueNumber, body: message });
+    } catch (err) {
+        log.warn({ err, owner, repo, issueNumber, kind }, "failed to post system comment for atomgit webhook");
+    }
+}
+
+function shouldLogAtomgitRequestBody(body: Record<string, unknown>): boolean {
+    const objectKind = String(body.object_kind ?? "").toLowerCase();
+    if (objectKind !== "note") {
+        return true;
+    }
+    const oa = body.object_attributes;
+    if (oa == null || typeof oa !== "object") {
+        return true;
+    }
+    const note = (oa as { note?: unknown }).note;
+    if (typeof note !== "string") {
+        return true;
+    }
+    return note.trim().startsWith("/");
+}
+
 /**
  * Register `POST /` on the router mounted at `/webhooks/atomgit` (docs §6、§8.6).
  */
@@ -86,24 +194,6 @@ export function registerAtomgitWebhookRoutes(
                 "atomgit webhook headers received",
             );
 
-            const secret = process.env.ATOMGIT_WEBHOOK_SECRET ?? "";
-            if (secret === "") {
-                log.warn("POST /webhooks/atomgit: ATOMGIT_WEBHOOK_SECRET unset; acknowledging to avoid retry storm");
-                res.status(200).json({ ok: false, reason: "atomgit_webhook_disabled" });
-                return;
-            }
-
-            const ok = verifyAtomgitWebhookRequest({
-                headers: req.headers,
-                secret,
-                log,
-            });
-            if (!ok) {
-                log.warn("Atomgit webhook verification failed");
-                res.status(401).end("Unauthorized");
-                return;
-            }
-
             let body: Record<string, unknown>;
             try {
                 body = JSON.parse(rawBody.toString("utf8")) as Record<string, unknown>;
@@ -116,8 +206,46 @@ export function registerAtomgitWebhookRoutes(
                 return;
             }
 
+            const owner = ownerFromAtomgitBody(body);
+            const tokenResult = await loadAtomgitWebhookTokenByOwner(log, owner);
+            if (!tokenResult.ok) {
+                if (tokenResult.authFailed) {
+                    await postSystemCommentFromBody(log, body, "apiUnavailable");
+                }
+                log.warn(
+                    {
+                        owner,
+                        atomgitDecision: "webhook_token_unavailable",
+                        authFailed: tokenResult.authFailed,
+                    },
+                    "Atomgit webhook token unavailable; acknowledging to avoid retry storm",
+                );
+                res.status(200).json({ ok: false, reason: "atomgit_webhook_token_unavailable" });
+                return;
+            }
+            const ok = verifyAtomgitWebhookRequest({
+                headers: req.headers,
+                secret: tokenResult.token,
+                log,
+            });
+            if (!ok) {
+                await postSystemCommentFromBody(log, body, "webhookTokenMismatch");
+                log.warn({ owner }, "Atomgit webhook verification failed");
+                res.status(401).json({
+                    ok: false,
+                    reason: "atomgit_webhook_token_mismatch",
+                    message: "项目注册失败，请联系管理员处理",
+                });
+                return;
+            }
+
             const eventHeader = atomgitEventHeader(req);
             const deliveryId = extractAtomgitDeliveryId(req.headers, body);
+
+            if (isNonCommandCommentEvent(eventHeader, body)) {
+                res.status(200).end();
+                return;
+            }
 
             const canonical = atomgitWebhookToCanonical({
                 eventHeader,
@@ -148,14 +276,16 @@ export function registerAtomgitWebhookRoutes(
                 },
                 "atomgit webhook received",
             );
-            log.info(
-                {
-                    provider: "atomgit",
-                    deliveryId: normalizeDeliveryId(deliveryId),
-                    requestBody: requestBodyForLog(body),
-                },
-                "atomgit webhook request body",
-            );
+            if (shouldLogAtomgitRequestBody(body)) {
+                log.info(
+                    {
+                        provider: "atomgit",
+                        deliveryId: normalizeDeliveryId(deliveryId),
+                        requestBody: requestBodyForLog(body),
+                    },
+                    "atomgit webhook request body",
+                );
+            }
 
             if (canonical == null) {
                 res.status(200).end();
@@ -248,10 +378,10 @@ export function mountAtomgitWebhookIfPresent(app: Probot, options: unknown): voi
     }
 
     if (getRouter === undefined) {
-        if ((process.env.ATOMGIT_WEBHOOK_SECRET ?? "") !== "") {
+        if ((process.env.PORTAL_ENDPOINT ?? "") !== "") {
             app.log.warn("getRouter unavailable: Atomgit routes (/webhooks/atomgit, /healthz) not mounted");
         } else {
-            app.log.debug("getRouter unavailable and Atomgit is disabled; skipping Atomgit routes");
+            app.log.debug("getRouter unavailable and portal endpoint is unset; skipping Atomgit routes");
         }
         return;
     }

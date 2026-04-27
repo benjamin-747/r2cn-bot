@@ -45,15 +45,15 @@ function actorFromGitlabUser(u: unknown): Actor | undefined {
 
 /**
  * When GitCode / GitLab sends **multiple new labels** in one `changes.labels` diff,
- * pick one {@link LabelRef} for {@link IssueLabeled.label}: first `r2cn-*` score label
- * (excluding `r2cn-complete`), else the first added label (handler skips if not r2cn).
+ * pick one {@link LabelRef} for {@link IssueLabeled.label}: first score-like label
+ * (`*-<number>`, excluding `*-complete`) if present, otherwise first added label.
  */
 function primaryAddedLabelForIssueHook(added: LabelRef[]): LabelRef | undefined {
     if (added.length === 0) {
         return undefined;
     }
-    const score = added.find((l) => l.name.startsWith("r2cn-") && l.name !== "r2cn-complete");
-    return score ?? added[0];
+    const scoreLike = added.find((l) => /.+-\d+$/.test(l.name) && !l.name.endsWith("-complete"));
+    return scoreLike ?? added[0];
 }
 
 function labelTitles(labels: unknown): LabelRef[] {
@@ -207,7 +207,7 @@ export function atomgitNoteHookToIssueCommentCreated(
 /**
  * GitLab / Atomgit **Issue Hook** → {@link IssueLabeled} when:
  * - **`action: update`** and `changes.labels` shows **at least one** new label; or
- * - **`action: open`** and `object_attributes.labels` already contains an **`r2cn-*`** score label
+ * - **`action: open`** and `object_attributes.labels` already contains score-like labels
  *   (GitCode may not emit a separate `update` hook when creating an issue with labels).
  */
 export function atomgitIssueHookToIssueLabeled(
@@ -250,13 +250,11 @@ export function atomgitIssueHookToIssueLabeled(
         newLabel = picked;
     } else if (action === "open") {
         const labelsOnIssue = issueHookLabelSnapshot(body, oa);
-        const r2cnScore = labelsOnIssue.filter(
-            (l) => l.name.startsWith("r2cn-") && l.name !== "r2cn-complete",
-        );
-        if (r2cnScore.length === 0) {
+        const scoreLike = labelsOnIssue.filter((l) => /.+-\d+$/.test(l.name) && !l.name.endsWith("-complete"));
+        if (scoreLike.length === 0) {
             return null;
         }
-        const picked = primaryAddedLabelForIssueHook(r2cnScore);
+        const picked = primaryAddedLabelForIssueHook(scoreLike);
         if (picked === undefined) {
             return null;
         }
@@ -400,10 +398,8 @@ export function atomgitWebhookMappingDiagnosis(opts: {
 
         if (action === "open") {
             const labelsOnIssue = issueHookLabelSnapshot(body, oa);
-            const r2cnScore = labelsOnIssue.filter(
-                (l) => l.name.startsWith("r2cn-") && l.name !== "r2cn-complete",
-            );
-            if (r2cnScore.length === 0) {
+            const scoreLike = labelsOnIssue.filter((l) => /.+-\d+$/.test(l.name) && !l.name.endsWith("-complete"));
+            if (scoreLike.length === 0) {
                 return {
                     reason: "issue_open_no_r2cn_score_labels",
                     details: {

@@ -7,7 +7,6 @@ import type { ScmClient } from "../src/scm/types.js";
 export function createMockScmClient(): ScmClient {
     return {
         createIssueComment: vi.fn().mockResolvedValue(undefined),
-        getRepositoryContent: vi.fn().mockResolvedValue(null),
         removeLabel: vi.fn().mockResolvedValue(undefined),
         removeAssignees: vi.fn().mockResolvedValue(undefined),
         addLabels: vi.fn().mockResolvedValue(undefined),

@@ -5,7 +5,7 @@ import type { ScmClient } from "./types.js";
 
 /**
  * Per-webhook runtime without pre-loaded YAML config.
- * Handlers call {@link loadBotConfig} from `config/load-bot-config.js` when needed.
+ * Handlers load comment/limits config on demand.
  */
 export type WebhookRuntimeDeps = {
     scm: ScmClient;

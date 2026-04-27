@@ -1,4 +1,11 @@
-import { CommandRequest, Config, getClaimedLabelName, isBackendApiError, postData } from "../config/index.js";
+import {
+    CommandRequest,
+    Config,
+    getClaimedLabelName,
+    isBackendApiError,
+    isCommandApiDataSuccess,
+    postData,
+} from "../config/index.js";
 import type { ScmProvider } from "../canonical/scm-provider.js";
 import type { Actor, IssueRef, LabelRef } from "../canonical/refs.js";
 import { Task, TaskStatus } from "../task/index.js";
@@ -7,6 +14,7 @@ import type { ScmClient } from "../scm/types.js";
 import { scmProjectOptsFromTask } from "../handlers/scm-project-opts.js";
 import { mergeBackendWithTask } from "../api/scm-backend-payload.js";
 import type { TaskApiResult } from "../task/index.js";
+import { loadOpenSourceInternshipConfigFromPortal } from "../config/load-open-source-internship-config.js";
 
 export type MentorCommandBusinessCode =
     | "invalid_task_state"
@@ -93,7 +101,7 @@ export async function handle_mentor_cmd(scm: ScmClient, config: Config, payload:
             }
             const approveRes = await internApprove(req, task, scmProvider);
             if (approveRes.apiError) {
-                return setResponse(config.comment.task.apiUnavailable, "api_error", false, true);
+                return setResponse(config.comment.system.apiUnavailable, "api_error", false, true);
             }
             if (!approveRes.ok) {
                 return setResponse(config.comment.command.invalidTaskState, "intern_approve_failed");
@@ -137,6 +145,13 @@ export async function handle_mentor_cmd(scm: ScmClient, config: Config, payload:
             if (task.task_status !== TaskStatus.RequestFinish) {
                 return setResponse(config.comment.command.invalidTaskState, "invalid_task_state");
             }
+            const doneRes = await internDone(req, task, scmProvider);
+            if (doneRes.apiError) {
+                return setResponse(config.comment.system.apiUnavailable, "api_error", false, true);
+            }
+            if (!doneRes.ok) {
+                return setResponse(config.comment.command.invalidTaskState, "intern_done_failed");
+            }
             await scm.updateIssue({
                 owner: task.owner,
                 repo: task.repo,
@@ -148,31 +163,24 @@ export async function handle_mentor_cmd(scm: ScmClient, config: Config, payload:
                 owner: task.owner,
                 repo: task.repo,
                 issueNumber: task.issue_number,
-                labels: ["r2cn-complete"],
+                labels: [await completeLabelName()],
                 ...tp,
             });
-            const doneRes = await internDone(req, task, scmProvider);
-            if (doneRes.apiError) {
-                return setResponse(config.comment.task.apiUnavailable, "api_error", false, true);
-            }
-            if (!doneRes.ok) {
-                return setResponse(config.comment.command.invalidTaskState, "intern_done_failed");
-            }
             return setResponse(config.comment.internDone.success, "intern_done_success", true);
         case "/intern-close":
+            const closeRes = await internClose(req, task, scmProvider);
+            if (closeRes.apiError) {
+                return setResponse(config.comment.system.apiUnavailable, "api_error", false, true);
+            }
+            if (!closeRes.ok) {
+                return setResponse(config.comment.command.invalidTaskState, "intern_close_failed");
+            }
             await scm.removeAllLabels({
                 owner: task.owner,
                 repo: task.repo,
                 issueNumber: task.issue_number,
                 ...tp,
             });
-            const closeRes = await internClose(req, task, scmProvider);
-            if (closeRes.apiError) {
-                return setResponse(config.comment.task.apiUnavailable, "api_error", false, true);
-            }
-            if (!closeRes.ok) {
-                return setResponse(config.comment.command.invalidTaskState, "intern_close_failed");
-            }
             return setResponse(config.comment.internClose.success, "intern_close_success", true);
         default:
             return setResponse(config.comment.command.unsupportMentorCommand, "unsupported_mentor_command");
@@ -185,7 +193,7 @@ async function internApprove(req: CommandRequest, task: Task, scmProvider: ScmPr
     const apiUrl = `${process.env.API_ENDPOINT}/task/intern-approve`;
     const apiRes = await postData<boolean, typeof body>(apiUrl, body);
     return {
-        ok: apiRes.data === true,
+        ok: isCommandApiDataSuccess(apiRes),
         apiError: isBackendApiError(apiRes),
         message: apiRes.message,
     } as TaskApiResult;
@@ -196,7 +204,7 @@ async function internDone(req: CommandRequest, task: Task, scmProvider: ScmProvi
     const apiUrl = `${process.env.API_ENDPOINT}/task/intern-done`;
     const apiRes = await postData<boolean, typeof body>(apiUrl, body);
     return {
-        ok: apiRes.data === true,
+        ok: isCommandApiDataSuccess(apiRes),
         apiError: isBackendApiError(apiRes),
         message: apiRes.message,
     } as TaskApiResult;
@@ -207,8 +215,16 @@ async function internClose(req: CommandRequest, task: Task, scmProvider: ScmProv
     const apiUrl = `${process.env.API_ENDPOINT}/task/intern-close`;
     const apiRes = await postData<boolean, typeof body>(apiUrl, body);
     return {
-        ok: apiRes.data === true,
+        ok: isCommandApiDataSuccess(apiRes),
         apiError: isBackendApiError(apiRes),
         message: apiRes.message,
     } as TaskApiResult;
+}
+
+async function completeLabelName(): Promise<string> {
+    const cfg = await loadOpenSourceInternshipConfigFromPortal(console);
+    if (cfg == null) {
+        return "r2cn-complete";
+    }
+    return `${cfg.tagPrefix}-complete`;
 }
