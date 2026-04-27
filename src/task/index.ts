@@ -26,6 +26,7 @@ export interface TaskApiResult {
     ok: boolean;
     apiError: boolean;
     message: string;
+    code?: string;
 }
 
 export enum TaskStatus {
@@ -122,6 +123,7 @@ export async function newTask(
         ok: apiRes.data != null,
         apiError,
         message: apiRes.message,
+        code: apiRes.code,
     };
 }
 

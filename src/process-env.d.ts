@@ -1,11 +1,11 @@
 /**
- * Environment variables used or reserved by r2cn-bot.
+ * Environment variables used or reserved by this bot.
  * Probot defines many keys on NodeJS.ProcessEnv; this file adds project-specific ones.
  */
 declare global {
     namespace NodeJS {
         interface ProcessEnv {
-            /** r2cn HTTP API base (existing). */
+            /** Backend HTTP API base (existing). */
             API_ENDPOINT?: string;
 
             /** Atomgit OpenAPI base URL (phase 4+). */

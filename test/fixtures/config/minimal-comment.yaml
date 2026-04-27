@@ -13,6 +13,7 @@ task:
   multiScoreLabel: "ml"
   scoreInvalidComment: "si"
   userToomanyTask: "um"
+  budgetExceeded: "be"
 command:
   noPermission: "np"
   invalidTaskState: "iv"

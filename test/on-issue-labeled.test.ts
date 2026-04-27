@@ -11,10 +11,10 @@ import type { Logger } from "pino";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("onIssueLabeled (phase 3)", () => {
-    test("skips non-r2cn labels without calling SCM", async () => {
+    test("skips non-score-prefix labels without calling SCM", async () => {
         const raw = JSON.parse(
             fs.readFileSync(
-                path.join(__dirname, "fixtures/issues.labeled-non-r2cn.json"),
+                path.join(__dirname, "fixtures/issues.labeled-non-score-prefix.json"),
                 "utf-8",
             ),
         );

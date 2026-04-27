@@ -42,14 +42,14 @@ describe("AtomgitScmClient createIssueComment", () => {
             owner: "rust-lang",
             repo: "portal",
             issueNumber: 3,
-            labels: ["r2cn", "claimed"],
+            labels: ["openatom", "claimed"],
         });
 
         expect(fetchSpy).toHaveBeenCalledWith(
             "https://api.atomgit.com/api/v5/repos/rust-lang/portal/issues/3/labels",
             expect.objectContaining({
                 method: "POST",
-                body: JSON.stringify(["r2cn", "claimed"]),
+                body: JSON.stringify(["openatom", "claimed"]),
             }),
         );
     });

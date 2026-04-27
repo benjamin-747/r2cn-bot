@@ -299,7 +299,9 @@ export async function onIssueLabeled(
                     issueNumber,
                     body: newTaskRes.apiError
                         ? comment.system.apiUnavailable
-                        : comment.command.invalidTaskState,
+                        : newTaskRes.code === "BUDGET_EXCEEDED"
+                            ? comment.task.budgetExceeded
+                            : comment.command.invalidTaskState,
                     ...p,
                 });
             }

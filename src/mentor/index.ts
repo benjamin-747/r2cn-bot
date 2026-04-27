@@ -224,7 +224,7 @@ async function internClose(req: CommandRequest, task: Task, scmProvider: ScmProv
 async function completeLabelName(): Promise<string> {
     const cfg = await loadOpenSourceInternshipConfigFromPortal(console);
     if (cfg == null) {
-        return "r2cn-complete";
+        return "openatom-complete";
     }
     return `${cfg.tagPrefix}-complete`;
 }

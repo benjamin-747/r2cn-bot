@@ -401,7 +401,7 @@ export function atomgitWebhookMappingDiagnosis(opts: {
             const scoreLike = labelsOnIssue.filter((l) => /.+-\d+$/.test(l.name) && !l.name.endsWith("-complete"));
             if (scoreLike.length === 0) {
                 return {
-                    reason: "issue_open_no_r2cn_score_labels",
+                    reason: "issue_open_no_score_labels",
                     details: {
                         ...base,
                         action,

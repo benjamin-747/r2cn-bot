@@ -16,7 +16,7 @@ function readFixture(rel: string): unknown {
 
 describe("GitHub + Atomgit adapters → Canonical (phase 5 snapshots)", () => {
     test("GitHub issues.labeled → IssueLabeled", () => {
-        const raw = readFixture("fixtures/issues.labeled-non-r2cn.json");
+        const raw = readFixture("fixtures/issues.labeled-non-score-prefix.json");
         const c = adaptGithubIssuesLabeled(
             raw as Parameters<typeof adaptGithubIssuesLabeled>[0],
             "delivery-labeled-1",
