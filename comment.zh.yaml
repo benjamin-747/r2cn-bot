@@ -44,7 +44,7 @@ requestAssign:
   success: >
     认领成功: 等待导师审核,请及时联系导师进行审核.
   waitingInfoReview: >
-    认领失败: 请先在 https://internship.xuanwu.openatom.cn/zh-CN/signin 进行学生注册并通过审核后才能认领任务.
+    认领失败: 请先在 {{INTERNSHIP_PORTAL_URL}}/zh-CN/signin 进行学生注册并通过审核后才能认领任务.
   waitingContract: >
     认领失败: 合同未签署,如果已经确认签署请在开源实习 Discord(https://discord.gg/WRp4TKv6rh) 的 #signup-student 频道联系管理员更新合同签署状态.
   existTask: >

@@ -49,7 +49,7 @@ export async function loadOpenSourceInternshipConfigFromPortal(
         return DEFAULT_INTERNSHIP_CONFIG;
     }
     const url = `${portalBase}/api/integration/open-source-internships/config`;
-    const authToken = (process.env.OPENATOM_INTEGRATION_TOKEN ?? "").trim();
+    const authToken = (process.env.OPENSOURCE_INTEGRATION_TOKEN ?? "").trim();
     const headers: HeadersInit = authToken === "" ? {} : { Authorization: `Bearer ${authToken}` };
     try {
         const res = await fetch(url, { headers });

@@ -129,28 +129,36 @@ const NON_ERROR_MESSAGES = new Set([
     "Task Not Found",
 ]);
 
-export function isBackendApiError<T>(res: Pick<ApiResponse<T>, "message" | "data">): boolean {
-    const withStatus = res as Pick<ApiResponse<T>, "message" | "data" | "status">;
+export function isBackendApiError<T>(res: Pick<ApiResponse<T>, "message" | "data" | "status">): boolean {
+    const status = res.status;
     const message = String(res.message ?? "").trim();
+    // Any successful HTTP response with a payload is a business response, never a transport error.
+    if (status != null && status >= 200 && status < 300) {
+        return false;
+    }
     if (res.data != null) {
         return false;
     }
-    // Treat 4xx as business/domain failures, not service unavailability.
-    if (withStatus.status != null && withStatus.status >= 400 && withStatus.status < 500) {
+    // Treat 4xx as business/domain failures (e.g. validation, not found), not service unavailability.
+    if (status != null && status >= 400 && status < 500) {
         return false;
     }
     // Explicit 5xx means backend/service failure.
-    if (withStatus.status != null && withStatus.status >= 500) {
+    if (status != null && status >= 500) {
         return true;
     }
-    if (message === "" || NON_ERROR_MESSAGES.has(message)) {
+    if (NON_ERROR_MESSAGES.has(message)) {
         return false;
     }
-    // Network-level failures from Axios/fetch-like stacks.
+    // Network-level failures from Axios/fetch-like stacks (no HTTP response at all).
     if (/(ECONNREFUSED|ECONNRESET|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|fetch failed|network error|socket hang up)/i.test(message)) {
         return true;
     }
-    // Keep this conservative: unknown textual messages without status are treated as business errors.
+    // No status code at all (request never reached/parsed a response) → transport failure.
+    if (status == null) {
+        return true;
+    }
+    // Keep this conservative: unknown textual messages with a status are treated as business errors.
     return false;
 }
 
@@ -175,14 +183,15 @@ export function isCommandApiDataSuccess<T>(res: Pick<ApiResponse<T>, "data">): b
 
 function toFailedApiResponse<T>(error: unknown): ApiResponse<T> {
     if (axios.isAxiosError(error)) {
-        const e = error as AxiosError<{ message?: string }>;
+        const e = error as AxiosError<{ message?: string; code?: string }>;
         const status = e.response?.status;
         const backendMessage = e.response?.data?.message;
+        const backendCode = e.response?.data?.code;
         const msg =
             backendMessage ??
             (status != null ? `HTTP ${status}: ${e.message}` : e.message) ??
             "Unknown error occurred";
-        return { message: msg, data: null as unknown as T, status };
+        return { message: msg, data: null as unknown as T, status, code: backendCode };
     }
     if (error instanceof Error) {
         return { message: error.message, data: null as unknown as T };
@@ -226,7 +235,7 @@ export const fetchData = async <T>(url: string): Promise<ApiResponse<T>> => {
             status: response.status,
             body: response.data,
         });
-        return response.data;
+        return { ...response.data, status: response.data.status ?? response.status };
     } catch (error: unknown) {
         const failed = toFailedApiResponse<T>(error);
         logApiAxiosError("GET", url, undefined, error, failed.message);
@@ -244,7 +253,7 @@ export const postData = async <T, U>(url: string, payload: U): Promise<ApiRespon
             status: response.status,
             body: response.data,
         });
-        return response.data;
+        return { ...response.data, status: response.data.status ?? response.status };
     } catch (error: unknown) {
         const failed = toFailedApiResponse<T>(error);
         logApiAxiosError("POST", url, payload, error, failed.message);

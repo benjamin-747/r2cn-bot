@@ -65,14 +65,14 @@ export async function loadAtomgitWebhookTokenByOwner(
         owner: normalizedOwner,
     });
     const url = `${portalBase}/api/integration/open-source-orgs/webhook-tokens?${query.toString()}`;
-    const authToken = (process.env.OPENATOM_INTEGRATION_TOKEN ?? "").trim();
+    const authToken = (process.env.OPENSOURCE_INTEGRATION_TOKEN ?? "").trim();
     const headers: HeadersInit = authToken === "" ? {} : { Authorization: `Bearer ${authToken}` };
     try {
         const res = await fetch(url, { headers });
         if (res.status === 401 || res.status === 403) {
             log.error(
                 { owner: normalizedOwner, status: res.status, url },
-                "portal webhook token auth failed; check OPENATOM_INTEGRATION_TOKEN",
+                "portal webhook token auth failed; check OPENSOURCE_INTEGRATION_TOKEN",
             );
             return { ok: false, authFailed: true };
         }

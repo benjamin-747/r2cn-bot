@@ -204,8 +204,8 @@ async function verifyStudentIdentity(login: string, scmProvider: Payload["scmPro
     }
     const queryKey = scmProvider === "atomgit" ? "atomgitUsername" : "githubUsername";
     const query = new URLSearchParams({ [queryKey]: login });
-    const apiUrl = `${portalBase}/api/integration/openatom/students/eligibility?${query.toString()}`;
-    const authToken = (process.env.OPENATOM_INTEGRATION_TOKEN ?? "").trim();
+    const apiUrl = `${portalBase}/api/integration/opensource/students/eligibility?${query.toString()}`;
+    const authToken = (process.env.OPENSOURCE_INTEGRATION_TOKEN ?? "").trim();
     const headers: HeadersInit = authToken === "" ? {} : { Authorization: `Bearer ${authToken}` };
     let payload: PortalEligibilityResponse;
     try {
@@ -238,10 +238,12 @@ async function verifyStudentTask(login: string, scmProvider: Payload["scmProvide
     const apiUrl = `${process.env.API_ENDPOINT}/student/task`;
     const body: UserReq & ScmBackendRequestFields = mergeBackendProviderOnly({ login }, scmProvider);
     const apiRes = await postData<Task, typeof body>(apiUrl, body);
+    // /student/task returns 200 with data: null when the student has no active task.
+    // Only transport/service failures count as apiError; a 200 (with or without data) is a business answer.
     if (isBackendApiError(apiRes)) {
         return { allow: false, apiError: true };
     }
-    return { allow: apiRes.data === null, apiError: false };
+    return { allow: apiRes.data == null, apiError: false };
 }
 
 

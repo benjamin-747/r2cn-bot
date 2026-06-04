@@ -39,7 +39,7 @@ Configure the repository webhook URL to **`POST https://<host>:<port>/webhooks/a
 | Variable | Description |
 |----------|-------------|
 | `PORTAL_ENDPOINT` | Portal base URL. Atomgit webhook verification token is fetched by owner from `/api/integration/open-source-orgs/webhook-tokens` and cached for 5 minutes. |
-| `OPENATOM_INTEGRATION_TOKEN` | Bearer token used in `Authorization` header when calling portal openatom integration APIs. |
+| `OPENSOURCE_INTEGRATION_TOKEN` | Bearer token used in `Authorization` header when calling portal opensource integration APIs. |
 | `ATOMGIT_API_BASE` | REST root for OpenAPI calls, e.g. `https://api.atomgit.com/api/v5`. Writes: comments `POST .../repos/:owner/:repo/issues/:number/comments`; labels `POST .../labels` (JSON **array of strings**); close/reopen issue uses `GET .../repos/:owner/:repo/issues/:number` then `PATCH .../repos/:owner/issues/:number` with **`application/x-www-form-urlencoded`** (`repo`, `title`, `body`, `state=close|reopen`) per [AtomGit](https://docs.atomgit.com/docs/apis/patch-api-v-5-repos-owner-issues-number). Required when handling Atomgit webhooks that need `AtomgitScmClient`. |
 | `ATOMGIT_TOKEN` | `Authorization: Bearer` token for OpenAPI. |
 | `ATOMGIT_API_VERSION` | Optional; default `2023-02-21` (`X-Api-Version` header). |
