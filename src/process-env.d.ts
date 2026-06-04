@@ -16,8 +16,10 @@ declare global {
             ATOMGIT_API_VERSION?: string;
             /** Portal server base URL for mentor limits API. */
             PORTAL_ENDPOINT?: string;
-            /** Bearer token for openatom integration APIs on portal. */
-            OPENATOM_INTEGRATION_TOKEN?: string;
+            /** Bearer token for opensource integration APIs on portal. */
+            OPENSOURCE_INTEGRATION_TOKEN?: string;
+            /** Portal URL for student/mentor registration (used in bot comments). */
+            INTERNSHIP_PORTAL_URL?: string;
         }
     }
 }

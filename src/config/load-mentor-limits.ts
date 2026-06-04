@@ -93,7 +93,7 @@ export async function loadMentorLimitsFromPortal(
         repo: input.repo,
     });
     const url = `${endpoint}/api/integration/open-source-projects/mentor-limits?${query.toString()}`;
-    const authToken = (process.env.OPENATOM_INTEGRATION_TOKEN ?? "").trim();
+    const authToken = (process.env.OPENSOURCE_INTEGRATION_TOKEN ?? "").trim();
     const headers: HeadersInit = authToken === "" ? {} : { Authorization: `Bearer ${authToken}` };
     try {
         const res = await fetch(url, { headers });

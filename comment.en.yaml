@@ -44,7 +44,7 @@ requestAssign:
   success: >
     Claim successful: Waiting for mentor review. Please contact your mentor for review in a timely manner.
   waitingInfoReview: >
-    Claim failed: Please register as a student at https://internship.xuanwu.openatom.cn/en/signin and pass the review before claiming tasks.
+    Claim failed: Please register as a student at {{INTERNSHIP_PORTAL_URL}}/en/signin and pass the review before claiming tasks.
   waitingContract: >
     Claim failed: Contract not signed. If you have confirmed signing, please contact the administrator in the Open Source Internship Discord (https://discord.gg/WRp4TKv6rh) #signup-student channel to update the contract signing status.
   existTask: >

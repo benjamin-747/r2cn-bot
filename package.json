@@ -1,8 +1,8 @@
 {
-  "name": "openatom-internship-bot",
+  "name": "opensource-internship-bot",
   "version": "2.0.0",
   "private": true,
-  "description": "A Openatom Internship Bot app",
+  "description": "A opensource Internship Bot app",
   "author": "benjamin.747",
   "license": "ISC",
   "homepage": "https://github.com//",
@@ -10,7 +10,7 @@
     "probot",
     "github",
     "atomgit",
-    "openatom",
+    "opensource",
     "internship",
     "bot",
     "probot-app"

@@ -1,4 +1,4 @@
-name: Openatom Internship Bot deploy
+name: Opensource Internship Bot deploy
 on:
   push:
     branches:
@@ -50,7 +50,7 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
           REGISTRY_ALIAS: m8q5m4u3
-          REPOSITORY: openatom-internship/bot
+          REPOSITORY: opensource-internship/bot
         run: |
 
           IMAGE_BASE="$REGISTRY/$REGISTRY_ALIAS/$REPOSITORY"
